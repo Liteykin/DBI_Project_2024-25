@@ -1,0 +1,11 @@
+@DBI_Project_2024_25_HostAddress = http://localhost:5184
+
+GET {{DBI_Project_2024_25_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{DBI_Project_2024_25_HostAddress}}/todos/1
+Accept: application/json
+
+###
