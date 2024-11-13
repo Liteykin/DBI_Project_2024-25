@@ -11,9 +11,6 @@ public class TierDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
-        
-
         // Configure Tier entity
         modelBuilder.Entity<Tier>(entity =>
         {

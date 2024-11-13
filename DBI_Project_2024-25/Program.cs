@@ -19,40 +19,50 @@ builder.Services.AddDbContext<TierDbContext>(options =>
 
 var app = builder.Build();
 
-// GET all Tiere
+// GET Tiere
 app.MapGet("/tiere", async (TierDbContext db) =>
     await db.Tiere.ToListAsync());
 
-// GET all Filialen
+app.MapGet("/tiere/{name}", async (string name, TierDbContext db) => {
+    var tier = await db.Tiere.FindAsync(name);
+    return (tier is null) ? Results.NotFound() : Results.Ok(tier);
+});
+
+// GET Filialen
 app.MapGet("/filialen", async (TierDbContext db) =>
     await db.Filialen.ToListAsync());
+
+app.MapGet("/filialen/{id}", async (int id, TierDbContext db) => {
+    var filiale = await db.Filialen.FindAsync(id);
+    return (filiale is null) ? Results.NotFound() : Results.Ok(filiale);
+});
 
 // GET all TierFilialen
 app.MapGet("/tierfilialen", async (TierDbContext db) =>
     await db.TierFilialen.ToListAsync());
 
 // POST a new Tier
-app.MapPost("/tiere", async (Tier tier, TierDbContext db) =>
+app.MapPost("/tiere", (Tier tier, TierDbContext db) =>
 {
     db.Tiere.Add(tier);
-    await db.SaveChangesAsync();
+    db.SaveChanges();
     return Results.Created($"/tiere/{tier.Name}", tier);
 });
 
 // POST a new Filiale
-app.MapPost("/filialen", async (Filiale filiale, TierDbContext db) =>
+app.MapPost("/filialen", (Filiale filiale, TierDbContext db) =>
 {
     db.Filialen.Add(filiale);
-    await db.SaveChangesAsync();
+    db.SaveChanges();
     return Results.Created($"/filialen/{filiale.Id}", filiale);
 });
 
 // POST a new TierFiliale
-app.MapPost("/tierfilialen", async (TierFiliale tierFiliale, TierDbContext db) =>
+app.MapPost("/tierfilialen", (TierFiliale tierFiliale, TierDbContext db) =>
 {
     db.TierFilialen.Add(tierFiliale);
-    await db.SaveChangesAsync();
-    return Results.Created($"/tierfilialen/{tierFiliale.FilialeId}/{tierFiliale.TierName}", tierFiliale);
+    db.SaveChanges();
+    return Results.Created();
 });
 
 app.Run();
@@ -63,6 +73,4 @@ app.Run();
 [JsonSerializable(typeof(List<Filiale>))]
 [JsonSerializable(typeof(TierFiliale))]
 [JsonSerializable(typeof(List<TierFiliale>))]
-internal partial class AppJsonSerializerContext : JsonSerializerContext
-{
-}
+internal partial class AppJsonSerializerContext : JsonSerializerContext {}
