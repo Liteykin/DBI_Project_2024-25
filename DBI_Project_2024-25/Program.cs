@@ -2,13 +2,22 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using DBI_Project_2024_25.Models;
 using Npgsql;
+using Microsoft.AspNetCore.Routing.Constraints;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.Services.Configure<RouteOptions>(
+    options => options.SetParameterPolicy<RegexInlineRouteConstraint>("regex"));
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
 
 // Setup NpgsqlDataSource
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -18,6 +27,9 @@ builder.Services.AddDbContext<TierDbContext>(options =>
     options.UseNpgsql(dataSource));
 
 var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // GET Tiere
 app.MapGet("/tiere", async (TierDbContext db) =>
