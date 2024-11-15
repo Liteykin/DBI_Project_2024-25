@@ -5,6 +5,8 @@ namespace DBI_Project_2024_25.Infrastructure
 {
     public class SeedingService {
 
+        private const int SEED = 1245899876;
+
         private TierDbContext _db;
 
         public SeedingService(TierDbContext db) {
@@ -37,6 +39,8 @@ namespace DBI_Project_2024_25.Infrastructure
                 .RuleFor(t => t.Gewicht, f => f.Random.Number(1000) / 10)
                 .RuleFor(t => t.Groesse, f => f.Random.Number(1000) / 10);
 
+            faker.UseSeed(SEED);
+
             return faker.Generate(count);
         }
 
@@ -46,6 +50,8 @@ namespace DBI_Project_2024_25.Infrastructure
                 .RuleFor(t => t.Id, f => id++)
                 .RuleFor(t => t.Name, f => f.Company.CompanyName())
                 .RuleFor(t => t.Adresse, f => f.Address.StreetAddress());
+
+            faker.UseSeed(SEED);
 
             return faker.Generate(count);
         }
@@ -59,6 +65,8 @@ namespace DBI_Project_2024_25.Infrastructure
                             .RuleFor(tf => tf.FilialeId, f => f.PickRandom(filialen).Id)
                             .RuleFor(tf => tf.TierName, f => f.PickRandom(tiere).Name)
                             .RuleFor(tf => tf.Anzahl, f => f.Random.Number(anzahl) + 1);
+
+            faker.UseSeed(SEED);
 
             var result = new List<TierFiliale>();
             var combinations = new HashSet<string>();
