@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using DBI_Project_2024_25.Models;
 using Microsoft.AspNetCore.Routing.Constraints;
 using DBI_Project_2024_25.Infrastructure;
-using System.Xml;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -25,7 +24,7 @@ builder.Services.AddDbContext<TierDbContext>(options => {
     if (builder.Environment.IsDevelopment()) {
         options.EnableSensitiveDataLogging();
     }
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("Sqlite"));
 });
 
 var app = builder.Build();
@@ -114,6 +113,7 @@ app.MapPost("/tierfiliale", (TierFiliale tierFiliale, TierDbContext db) => {
     return Results.Created();
 });
 
+// Seeding
 app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seedingService, TierDbContext db) => {
     seedingService.Seed(
         db,
@@ -122,6 +122,8 @@ app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seeding
         seedingRequest.TierFilialeCount,
         seedingRequest.TierFilialeAnzahl
     );
+
+    return Results.Ok(seedingService.stopwatch.Elapsed);
 });
 
 app.Run();

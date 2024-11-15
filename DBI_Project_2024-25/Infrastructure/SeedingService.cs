@@ -1,4 +1,5 @@
-﻿using Bogus;
+﻿using System.Diagnostics;
+using Bogus;
 using DBI_Project_2024_25.Models;
 
 namespace DBI_Project_2024_25.Infrastructure
@@ -8,6 +9,8 @@ namespace DBI_Project_2024_25.Infrastructure
         private const int SEED = 1245899876;
 
         private TierDbContext _db;
+
+        public Stopwatch stopwatch = new Stopwatch();
 
         public SeedingService(TierDbContext db) {
             _db = db;
@@ -22,6 +25,8 @@ namespace DBI_Project_2024_25.Infrastructure
         }
 
         public List<Tier> GenerateTiere(int count, int shift) {
+            count = Math.Min(100, count);
+
             var names = new HashSet<string>();
             var nameFaker = new Faker();
 
@@ -45,6 +50,8 @@ namespace DBI_Project_2024_25.Infrastructure
         }
 
         public List<Filiale> GenerateFilialen(int count, int shift) {
+            count = Math.Min(100, count);
+
             var id = shift + 1;
             var faker = new Faker<Filiale>()
                 .RuleFor(t => t.Id, f => id++)
@@ -87,6 +94,8 @@ namespace DBI_Project_2024_25.Infrastructure
         }
 
         public void Seed(TierDbContext db, int tierCount, int filialeCount, int tierFilialeCount, int tierFilialeAnzahl) {
+            stopwatch.Start();
+
             var filialen = GenerateFilialen(filialeCount);
             var tiere = GenerateTiere(tierCount);
             var tierfilialen = GenerateTierFilialen(filialen, tiere, tierFilialeCount, tierFilialeAnzahl);
@@ -99,6 +108,8 @@ namespace DBI_Project_2024_25.Infrastructure
 
             db.TierFilialen.AddRange(tierfilialen);
             db.SaveChanges();
+
+            stopwatch.Stop();
         }
     }
 }
