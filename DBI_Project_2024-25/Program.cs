@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using DBI_Project_2024_25.Models;
-using Npgsql;
 using Microsoft.AspNetCore.Routing.Constraints;
+using DBI_Project_2024_25.Infrastructure;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -17,19 +17,30 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add Seeding Service
+builder.Services.AddScoped<SeedingService>();
 
-
-// Setup NpgsqlDataSource
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
-var dataSource = dataSourceBuilder.Build();
-
-builder.Services.AddDbContext<TierDbContext>(options =>
-    options.UseNpgsql(dataSource));
+builder.Services.AddDbContext<TierDbContext>(options => {
+    if (builder.Environment.IsDevelopment()) {
+        options.EnableSensitiveDataLogging();
+    }
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+using (var scope = app.Services.CreateScope()) {
+    var db = scope.ServiceProvider.GetRequiredService<TierDbContext>();
+    db.Database.EnsureDeleted();
+    db.Database.EnsureCreated();
+}
+
+if (app.Environment.IsDevelopment()) {
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+;
 
 // GET Tiere
 app.MapGet("/tiere", async (TierDbContext db) =>
@@ -77,6 +88,10 @@ app.MapPost("/tierfilialen", (TierFiliale tierFiliale, TierDbContext db) =>
     return Results.Created();
 });
 
+app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seedingService, TierDbContext db) => {
+    seedingService.Seed(db, seedingRequest.TierCount, seedingRequest.FilialeCount, seedingRequest.TierFilialeCount, seedingRequest.TierFilialeAnzahl);
+});
+
 app.Run();
 
 [JsonSerializable(typeof(Tier))]
@@ -85,4 +100,5 @@ app.Run();
 [JsonSerializable(typeof(List<Filiale>))]
 [JsonSerializable(typeof(TierFiliale))]
 [JsonSerializable(typeof(List<TierFiliale>))]
+[JsonSerializable(typeof(SeedingRequest))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext {}
