@@ -1,7 +1,4 @@
-﻿using DBI_Project_2024_25.Infrastructure;
-using DBI_Project_2024_25.Models;
-using Microsoft.AspNetCore.Routing.Constraints;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace DBI_Project_2024_25 {
     public class SqliteProgram : DatabaseProgram {

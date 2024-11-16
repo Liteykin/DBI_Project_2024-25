@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
 using DBI_Project_2024_25.Models;
 using DBI_Project_2024_25;
 
@@ -7,9 +6,11 @@ var sqliteBuilder = WebApplication.CreateSlimBuilder(args);
 //var noSqlBuilder = WebApplication.CreateSlimBuilder(args);
 
 var sqliteApp = SqliteProgram.GenerateApp(sqliteBuilder);
-// var noSqlApp = NoSqlProgramm.GenerateApp(builder);
+// var noSqlApp = NoSqlProgramm.GenerateApp(noSqlBuilder);
 
 sqliteApp.Run();
+// noSqlApp.Run();
+
 
 [JsonSerializable(typeof(Tier))]
 [JsonSerializable(typeof(List<Tier>))]
