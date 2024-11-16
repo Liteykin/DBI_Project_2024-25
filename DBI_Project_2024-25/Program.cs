@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using DBI_Project_2024_25.Infrastructure;
 using DBI_Project_2024_25.Models;
+using DBI_Project_2024_25.Models.MongoModels;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
@@ -39,8 +40,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TierDbContext>();
+    var mongoDb = scope.ServiceProvider.GetRequiredService<MongoTierDbContext>();
+
     db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
+
+    mongoDb.Database.AutoTransactionBehavior = AutoTransactionBehavior.Never;
+    mongoDb.Database.EnsureCreated();
 }
 
 if (app.Environment.IsDevelopment())
@@ -217,18 +223,29 @@ app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seeding
 // Mongo Begin
 
 // GET Tiere
-app.MapGet("mongo/tiere", async (MongoTierDbContext db) =>
-    Results.Ok(await db.Tiere.ToListAsync()));
+app.MapGet("mongo/tiere", (MongoTierDbContext db) => {
+    var filialen = db.Filialen;
+    var tiere = new List<MongoTier>();
 
-app.MapGet("mongo/tier/{name}", async (string name, MongoTierDbContext db) => {
-    var tier = await db.Tiere.FindAsync(name);
-    return tier is null ? Results.NotFound() : Results.Ok(tier);
+    foreach (var f in filialen) {
+        tiere.AddRange(f.Tiere);
+    }
+
+    return Results.Ok(tiere);
+});
+
+app.MapGet("mongo/tier/{name}", (string name, MongoTierDbContext db) => {
+    var filialen = db.Filialen;
+    var tiere = new List<MongoTier>();
+
+    foreach (var f in filialen) {
+        tiere.AddRange(f.Tiere.Where(t => t.Name == name));
+    }
+    return Results.Ok(tiere);
 });
 
 app.MapGet("mongo/tiere/filiale/{id}", (int id, MongoTierDbContext db) => {
-    var tiere = db.TierFilialen
-        .Where(tf => tf.FilialeId == id)
-        .Join(db.Tiere, tf => tf.TierName, t => t.Name, (tf, t) => t);
+    var tiere = db.Filialen.Find(id)?.Tiere ?? [];
 
     return Results.Ok(tiere.ToList());
 });
@@ -243,68 +260,60 @@ app.MapGet("mongo/filiale/{id}", async (int id, MongoTierDbContext db) => {
 });
 
 app.MapGet("mongo/filialen/tier/{name}", (string name, MongoTierDbContext db) => {
-    var filialen = db.TierFilialen
-        .Where(tf => tf.TierName == name)
-        .Join(db.Filialen, tf => tf.FilialeId, f => f.Id, (tf, f) => f);
+    var filialen = db.Filialen.Where(f => f.Tiere.FirstOrDefault(t => t.Name == name) == null);
 
     return Results.Ok(filialen.ToList());
-});
-
-// GET all TierFilialen
-app.MapGet("mongo/tierfilialen", async (MongoTierDbContext db) =>
-    Results.Ok(await db.TierFilialen.ToListAsync()));
-
-app.MapGet("mongo/tierfilialen/tier/{name}", (string name, MongoTierDbContext db) => {
-    var tierFilialen = db.TierFilialen.Where(tf => tf.TierName == name);
-
-    return Results.Ok(tierFilialen.ToList());
-});
-
-app.MapGet("mongo/tierfilialen/filiale/{id}", (int id, MongoTierDbContext db) => {
-    var tierFilialen = db.TierFilialen.Where(tf => tf.FilialeId == id);
-
-    return Results.Ok(tierFilialen.ToList());
 });
 
 // -----
 
 // POST a new Tier
-app.MapPost("mongo/tier", (Tier tier, MongoTierDbContext db) => {
-    db.Tiere.Add(tier);
+app.MapPost("mongo/tier/{id}", (MongoTier tier, int id, MongoTierDbContext db) => {
+    var filiale = db.Filialen.Find(id);
+    if (filiale is null) {
+        return Results.NotFound();
+    }
+
+    filiale.Tiere.Add(tier);
     db.SaveChanges();
-    return Results.Created($"/tiere/{tier.Name}", tier);
+
+    return Results.Created($"mongo/tiere/{tier.Name}", tier);
 });
 
-app.MapPut("mongo/tier", (Tier tier, MongoTierDbContext db) => {
-    var foundTier = db.Tiere.Find(tier.Name);
-    if (foundTier is null) return Results.NotFound();
-
-    foundTier.Gewicht = tier.Gewicht;
-    foundTier.Groesse = tier.Groesse;
+app.MapPut("mongo/tier", (MongoTier tier, MongoTierDbContext db) => {
+    var foundTiere = db.Filialen.SelectMany(f => f.Tiere.Where(t => t.Name == tier.Name));
+    foreach(var t in foundTiere) {
+        t.Anzahl = tier.Anzahl;
+        t.Groesse = tier.Groesse;
+        t.Gewicht = tier.Gewicht;
+    }
     db.SaveChanges();
 
-    return Results.Ok(tier);
+    return Results.Ok(foundTiere.ToList());
 });
 
 app.MapDelete("mongo/tier/{name}", (string name, MongoTierDbContext db) => {
-    var foundTier = db.Tiere.Find(name);
-    if (foundTier is null) return Results.NotFound();
 
-    db.Tiere.Remove(foundTier);
+    foreach (var f in db.Filialen) {
+        foreach (var t in f.Tiere.Where(t => t.Name == name)) {
+            f.Tiere.Remove(t);
+        }
+    }
+
     db.SaveChanges();
 
     return Results.Ok();
 });
 
 // POST a new Filiale
-app.MapPost("mongo/filiale", (Filiale filiale, MongoTierDbContext db) => {
+app.MapPost("mongo/filiale", (MongoFiliale filiale, MongoTierDbContext db) => {
     db.Filialen.Add(filiale);
     db.SaveChanges();
 
-    return Results.Created($"/filialen/{filiale.Id}", filiale);
+    return Results.Created($"mongo/filialen/{filiale.Id}", filiale);
 });
 
-app.MapPut("mongo/filiale", (Filiale filiale, MongoTierDbContext db) => {
+app.MapPut("mongo/filiale", (MongoFiliale filiale, MongoTierDbContext db) => {
     var foundFiliale = db.Filialen.Find(filiale.Id);
     if (foundFiliale is null) return Results.NotFound();
 
@@ -325,40 +334,12 @@ app.MapDelete("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
     return Results.Ok();
 });
 
-// POST a new TierFiliale
-app.MapPost("mongo/tierfiliale", (TierFiliale tierFiliale, MongoTierDbContext db) => {
-    db.TierFilialen.Add(tierFiliale);
-    db.SaveChanges();
-    return Results.Created();
-});
-
-app.MapPut("mongo/tierfiliale", (TierFiliale tierFiliale, MongoTierDbContext db) => {
-    var foundTierFiliale = db.TierFilialen.Find(tierFiliale.FilialeId, tierFiliale.TierName);
-    if (foundTierFiliale is null) return Results.NotFound();
-
-    foundTierFiliale.Anzahl = tierFiliale.Anzahl;
-    db.SaveChanges();
-
-    return Results.Ok(tierFiliale);
-});
-
-app.MapDelete("mongo/tierfiliale/{id}/{name}", (int id, string name, MongoTierDbContext db) => {
-    var foundTierFiliale = db.TierFilialen.Find(id, name);
-    if (foundTierFiliale is null) return Results.NotFound();
-
-    db.TierFilialen.Remove(foundTierFiliale);
-    db.SaveChanges();
-
-    return Results.Ok();
-});
-
 // Seeding
 app.MapPost("mongo/startseed", (SeedingRequest seedingRequest, SeedingService seedingService, MongoTierDbContext db) => {
-    seedingService.Seed(
+    seedingService.SeedMongo(
         db,
         seedingRequest.TierCount,
         seedingRequest.FilialeCount,
-        seedingRequest.TierFilialeCount,
         seedingRequest.TierFilialeAnzahl
     );
 
