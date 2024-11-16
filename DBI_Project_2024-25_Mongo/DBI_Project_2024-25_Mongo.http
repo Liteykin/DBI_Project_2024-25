@@ -1,0 +1,6 @@
+@DBI_Project_2024_25_Mongo_HostAddress = http://localhost:5250
+
+GET {{DBI_Project_2024_25_Mongo_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,9 +1,13 @@
-using Microsoft.EntityFrameworkCore;
 using DBI_Project_2024_25.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace DBI_Project_2024_25.Infrastructure;
 
 public class TierDbContext : DbContext
 {
-    public TierDbContext(DbContextOptions<TierDbContext> options) : base(options) { }
+    public TierDbContext(DbContextOptions<TierDbContext> options) : base(options)
+    {
+    }
 
     public DbSet<Tier> Tiere { get; set; }
     public DbSet<Filiale> Filialen { get; set; }
@@ -14,7 +18,7 @@ public class TierDbContext : DbContext
         // Configure Tier entity
         modelBuilder.Entity<Tier>(entity =>
         {
-            entity.HasKey(t => t.Name);  // Using Name as the primary key
+            entity.HasKey(t => t.Name); // Using Name as the primary key
             entity.Property(t => t.Name).IsRequired();
             entity.Property(t => t.Groesse).IsRequired();
             entity.Property(t => t.Gewicht).IsRequired().HasColumnType("decimal(18,2)");
