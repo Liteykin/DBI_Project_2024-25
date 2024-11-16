@@ -8,9 +8,14 @@ public class SeedingService
 {
     private const int SEED = 1245899876;
 
+    private TierDbContext _db;
+
     public Stopwatch stopwatch = new();
 
-    public SeedingService() {}
+    public SeedingService(TierDbContext db)
+    {
+        _db = db;
+    }
 
     public List<Tier> GenerateTiere(int count)
     {
