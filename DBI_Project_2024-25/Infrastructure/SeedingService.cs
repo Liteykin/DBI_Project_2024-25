@@ -15,80 +15,34 @@ public class SeedingService
 
     public List<Tier> GenerateTiere(int count)
     {
-        return GenerateTiere(count, 0);
+        var faker = new Faker<Tier>()
+            .RuleFor(t => t.Name, f => f.Lorem.Word() + f.IndexFaker)
+            .RuleFor(t => t.Gewicht, f => f.Random.Number(100))
+            .RuleFor(t => t.Groesse, f => f.Random.Number(100));
+
+        faker.UseSeed(SEED);
+
+        return faker.Generate(count);
+    }
+
+    public List<MongoTier> GenerateTiereMongo(int count, long idShift) {
+        var id = idShift;
+        var faker = new Faker<MongoTier>()
+            .RuleFor(t => t.Name, f => f.Lorem.Word() + id++)
+            .RuleFor(t => t.Gewicht, f => f.Random.Number(100))
+            .RuleFor(t => t.Groesse, f => f.Random.Number(100))
+            .RuleFor(t => t.Anzahl, f => f.Random.Number(100) + 1);
+
+        faker.UseSeed(SEED);
+
+        return faker.Generate(count);
     }
 
     public List<Filiale> GenerateFilialen(int count)
     {
-        return GenerateFilialen(count, 0);
-    }
-
-    public List<MongoFiliale> GenerateFilialenMongo(int count, ICollection<MongoTier> tiere) {
-        return GenerateFilialenMongo(count, 0, tiere);
-    }
-
-    public List<Tier> GenerateTiere(int count, int shift)
-    {
-        count = Math.Min(100, count);
-
-        var names = new HashSet<string>();
-        var nameFaker = new Faker();
-
-        for (var i = 0; i < count; i++)
-        {
-            string name;
-            do
-            {
-                name = nameFaker.Lorem.Word();
-            } while (!names.Add(name));
-        }
-
-        var nameList = names.ToList();
-
-        var faker = new Faker<Tier>()
-            .RuleFor(t => t.Name, f => nameList[f.IndexFaker])
-            .RuleFor(t => t.Gewicht, f => f.Random.Number(1000) / 10)
-            .RuleFor(t => t.Groesse, f => f.Random.Number(1000) / 10);
-
-        faker.UseSeed(SEED);
-
-        return faker.Generate(count);
-    }
-
-    public List<MongoTier> GenerateTiereMongo(int count, int anzahl) {
-        count = Math.Min(100, count);
-
-        var names = new HashSet<string>();
-        var nameFaker = new Faker();
-
-        for (var i = 0; i < count; i++) {
-            string name;
-            do {
-                name = nameFaker.Lorem.Word();
-            } while (!names.Add(name));
-        }
-
-        var nameList = names.ToList();
-
-        var faker = new Faker<MongoTier>()
-            .RuleFor(t => t.Name, f => nameList[f.IndexFaker])
-            .RuleFor(t => t.Gewicht, f => f.Random.Number(1000) / 10)
-            .RuleFor(t => t.Groesse, f => f.Random.Number(1000) / 10)
-            .RuleFor(t => t.Anzahl, f => f.Random.Number(anzahl));
-
-        faker.UseSeed(SEED);
-
-        return faker.Generate(count);
-    }
-
-    public List<Filiale> GenerateFilialen(int count, int shift)
-    {
-        count = Math.Min(100, count);
-
-        var id = shift + 1;
         var faker = new Faker<Filiale>()
-            .RuleFor(f => f.Id, f => id++)
-            .RuleFor(f => f.Name, f => f.Company.CompanyName())
+            .RuleFor(f => f.Id, f => f.IndexFaker + 1)
+            .RuleFor(f => f.Name, f => f.Company.CompanyName() + f.IndexFaker)
             .RuleFor(f => f.Adresse, f => f.Address.StreetAddress());
 
         faker.UseSeed(SEED);
@@ -96,59 +50,49 @@ public class SeedingService
         return faker.Generate(count);
     }
 
-    public List<MongoFiliale> GenerateFilialenMongo(int count, int shift, ICollection<MongoTier> tiere) {
-        count = Math.Min(100, count);
-
-        var id = shift + 1;
+    public List<MongoFiliale> GenerateFilialenMongo(int count, int tiereProFiliale) {
         var faker = new Faker<MongoFiliale>()
             .RuleFor("Id", f => GenerateHex())
-            .RuleFor(f => f.Name, f => f.Company.CompanyName())
+            .RuleFor(f => f.Name, f => f.Company.CompanyName() + f.IndexFaker)
             .RuleFor(f => f.Adresse, f => f.Address.StreetAddress())
-            .RuleFor(f => f.Tiere, tiere);
+            .RuleFor(f => f.Tiere, f => GenerateTiereMongo(tiereProFiliale, f.IndexFaker * tiereProFiliale));
 
         faker.UseSeed(SEED);
 
         return faker.Generate(count);
     }
 
-    public List<TierFiliale> GenerateTierFilialen(List<Filiale> filialen, List<Tier> tiere, int count, int anzahl)
+    public List<TierFiliale> GenerateTierFilialen(List<Filiale> filialen, List<Tier> tiere, int count)
     {
         // Failsafe
         count = Math.Min(filialen.Count * tiere.Count, count);
 
+        var allowedIndecies = Enumerable.Range(0, filialen.Count).ToList();
+
         var faker = new Faker<TierFiliale>()
-            .RuleFor(tf => tf.FilialeId, f => f.PickRandom(filialen).Id)
+            .RuleFor(tf => tf.FilialeId, f => { 
+                var index = f.PickRandom(allowedIndecies);
+                allowedIndecies.Remove(index);
+                return filialen[index].Id;
+            })
             .RuleFor(tf => tf.TierName, f => f.PickRandom(tiere).Name)
-            .RuleFor(tf => tf.Anzahl, f => f.Random.Number(anzahl) + 1);
+            .RuleFor(tf => tf.Anzahl, f => f.Random.Number(100) + 1);
 
         faker.UseSeed(SEED);
 
-        var result = new List<TierFiliale>();
-        var combinations = new HashSet<string>();
-        string currentCombination;
-
-        for (var i = 0; i < count; i++)
-        {
-            TierFiliale generated;
-
-            do
-            {
-                generated = faker.Generate();
-                currentCombination = generated.FilialeId + generated.TierName;
-            } while (!combinations.Add(currentCombination));
-
-            result.Add(generated);
-        }
-
-        return result;
+        return faker.Generate(count);
     }
 
-    public void Seed(TierDbContext db, int tierCount, int filialeCount, int tierFilialeCount, int tierFilialeAnzahl)
+    public void Seed(TierDbContext db, int tierCount, int filialeCount, int tierFilialeCount)
     {
+        db.Filialen.RemoveRange(db.Filialen);
+        db.Tiere.RemoveRange(db.Tiere);
+        db.TierFilialen.RemoveRange(db.TierFilialen);
+        db.SaveChanges();
 
         var filialen = GenerateFilialen(filialeCount);
         var tiere = GenerateTiere(tierCount);
-        var tierfilialen = GenerateTierFilialen(filialen, tiere, tierFilialeCount, tierFilialeAnzahl);
+        var tierfilialen = GenerateTierFilialen(filialen, tiere, tierFilialeCount);
 
         stopwatch.Start();
 
@@ -164,10 +108,11 @@ public class SeedingService
         stopwatch.Stop();
     }
 
-    public void SeedMongo(MongoTierDbContext db, int tierCount, int filialeCount, int tierFilialeAnzahl) {
+    public void SeedMongo(MongoTierDbContext db, int filialeCount, int tiereProFiliale) {
+        db.Filialen.RemoveRange(db.Filialen);
+        db.SaveChanges();
 
-        var tiere = GenerateTiereMongo(tierCount, tierFilialeAnzahl);
-        var filialen = GenerateFilialenMongo(filialeCount, tiere);
+        var filialen = GenerateFilialenMongo(filialeCount, tiereProFiliale);
 
         stopwatch.Start();
 

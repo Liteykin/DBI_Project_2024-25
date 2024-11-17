@@ -294,8 +294,7 @@ app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seeding
         db,
         seedingRequest.TierCount,
         seedingRequest.FilialeCount,
-        seedingRequest.TierFilialeCount,
-        seedingRequest.TierFilialeAnzahl
+        seedingRequest.TierFilialeCount
     );
 
     return Results.Ok(seedingService.stopwatch.Elapsed);
@@ -373,7 +372,7 @@ app.MapGet("mongo/filialen/tier/{name}", (string name, MongoTierDbContext db) =>
 // -----
 
 // POST a new Tier
-app.MapPost("mongo/tier/{id}", (MongoTier tier, int id, MongoTierDbContext db) => {
+app.MapPost("mongo/tier/filiale/{id}", (MongoTier tier, int id, MongoTierDbContext db) => {
     stopwatch.Start();
     var foundFiliale = db.Filialen.Find(id);
     if (foundFiliale is null) {
@@ -388,28 +387,41 @@ app.MapPost("mongo/tier/{id}", (MongoTier tier, int id, MongoTierDbContext db) =
     return new TimedResult<MongoFiliale>(foundFiliale, stopwatch.Elapsed).IntoCreatedResult();
 });
 
-app.MapPut("mongo/tier", (MongoTier tier, MongoTierDbContext db) => {
+app.MapPut("mongo/tier/filiale/{id}", (MongoTier tier, int id, MongoTierDbContext db) => {
     stopwatch.Start();
-    foreach(var f in db.Filialen) {
-        foreach (var t in f.Tiere.Where(t => t.Name == tier.Name)) {
-            t.Anzahl = tier.Anzahl;
-            t.Groesse = tier.Groesse;
-            t.Gewicht = tier.Gewicht;
-        }
+    var foundFiliale = db.Filialen.Find(id);
+    if (foundFiliale is null) {
+        return Results.NotFound();
     }
+
+    var foundTier = foundFiliale.Tiere.First(t => t.Equals(tier));
+    if (foundTier is null) {
+        return Results.NotFound();
+    }
+
+    foundTier.Anzahl = tier.Anzahl;
+    foundTier.Groesse = tier.Groesse;
+    foundTier.Gewicht = tier.Gewicht;
+    
     db.SaveChanges();
     stopwatch.Stop();
 
-    return new TimedResult<MongoTier>(tier, stopwatch.Elapsed);
+    return new TimedResult<MongoTier>(tier, stopwatch.Elapsed).IntoOkResult();
 });
 
-app.MapDelete("mongo/tier/{name}", (string name, MongoTierDbContext db) => {
+app.MapDelete("mongo/tier/filiale/{id}/{name}", (int id, string name, MongoTierDbContext db) => {
     stopwatch.Start();
-    foreach (var f in db.Filialen) {
-        foreach (var t in f.Tiere.Where(t => t.Name == name)) {
-            f.Tiere.Remove(t);
-        }
+    var foundFiliale = db.Filialen.Find(id);
+    if (foundFiliale is null) {
+        return Results.NotFound();
     }
+
+    var foundTier = foundFiliale.Tiere.Where(t => t.Name == name).FirstOrDefault();
+    if (foundTier is null) {
+        return Results.NotFound();
+    }
+
+    foundFiliale.Tiere.Remove(foundTier);
     db.SaveChanges();
     stopwatch.Stop();
 
@@ -458,12 +470,11 @@ app.MapDelete("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
 });
 
 // Seeding
-app.MapPost("mongo/startseed", (SeedingRequest seedingRequest, SeedingService seedingService, MongoTierDbContext db) => {
+app.MapPost("mongo/startseed", (MongoSeedingRequest mongoSeedingRequest, SeedingService seedingService, MongoTierDbContext db) => {
     seedingService.SeedMongo(
         db,
-        seedingRequest.TierCount,
-        seedingRequest.FilialeCount,
-        seedingRequest.TierFilialeAnzahl
+        mongoSeedingRequest.FilialeCount,
+        mongoSeedingRequest.TierProFilialeCount
     );
 
     return Results.Ok(seedingService.stopwatch.Elapsed);
