@@ -85,10 +85,6 @@ public class SeedingService
 
     public void Seed(TierDbContext db, int tierCount, int filialeCount, int tierFilialeCount)
     {
-        db.Filialen.RemoveRange(db.Filialen);
-        db.Tiere.RemoveRange(db.Tiere);
-        db.TierFilialen.RemoveRange(db.TierFilialen);
-        db.SaveChanges();
 
         var filialen = GenerateFilialen(filialeCount);
         var tiere = GenerateTiere(tierCount);
@@ -109,8 +105,6 @@ public class SeedingService
     }
 
     public void SeedMongo(MongoTierDbContext db, int filialeCount, int tiereProFiliale) {
-        db.Filialen.RemoveRange(db.Filialen);
-        db.SaveChanges();
 
         var filialen = GenerateFilialenMongo(filialeCount, tiereProFiliale);
 

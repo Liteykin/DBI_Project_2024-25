@@ -45,8 +45,13 @@ using (var scope = app.Services.CreateScope())
 
     db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
-
+    
+    
     mongoDb.Database.EnsureCreated();
+    mongoDb.Filialen.RemoveRange(mongoDb.Filialen);
+    mongoDb.SaveChanges();
+    
+    mongoDatabase.GetCollection<dynamic>("filialen").Indexes.DropAll();
 }
 
 if (app.Environment.IsDevelopment())
@@ -571,16 +576,15 @@ app.MapPost("mongo/index", () => {
 
     var indexKeys = Builders<dynamic>.IndexKeys.Ascending("name");
     var indexModel = new CreateIndexModel<dynamic>(indexKeys);
+    var name = collection.Indexes.CreateOne(indexModel);
     stopwatch.Stop();
 
-    return new TimedResult<string>(collection.Indexes.CreateOne(indexModel), stopwatch.Elapsed).IntoOkResult();
+    return new TimedResult<string>(name, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapDelete("mongo/index", () => {
     stopwatch.Start();
-    var collection = mongoDatabase.GetCollection<dynamic>("filialen");
-
-    collection.Indexes.DropAll();
+    mongoDatabase.GetCollection<dynamic>("filialen").Indexes.DropAll();
     stopwatch.Stop();
 
     return Results.Ok(stopwatch.Elapsed);
