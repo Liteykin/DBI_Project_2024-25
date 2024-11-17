@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json.Serialization;
+using Bogus.Extensions.UnitedKingdom;
 using DBI_Project_2024_25.Infrastructure;
 using DBI_Project_2024_25.Models;
 using DBI_Project_2024_25.Models.MongoModels;
@@ -55,60 +58,100 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// GET Tiere
-app.MapGet("/tiere", async (TierDbContext db) =>
-    Results.Ok(await db.Tiere.ToListAsync()));
+Stopwatch stopwatch = new();
 
-app.MapGet("/tier/{name}", async (string name, TierDbContext db) =>
+// GET Tiere
+app.MapGet("/tiere", (TierDbContext db) => {
+    stopwatch.Start();
+    var list = db.Tiere.ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<Tier>>(list, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("/tier/{name}", (string name, TierDbContext db) =>
 {
-    var tier = await db.Tiere.FindAsync(name);
-    return tier is null ? Results.NotFound() : Results.Ok(tier);
+    stopwatch.Start();
+    var tier = db.Tiere.Find(name);
+    stopwatch.Stop();
+    if (tier is null) {
+        return Results.NotFound();
+    }
+
+    return new TimedResult<Tier>(tier, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("/tiere/filiale/{id}", (int id, TierDbContext db) =>
 {
+    stopwatch.Start();
     var tiere = db.TierFilialen
         .Where(tf => tf.FilialeId == id)
-        .Join(db.Tiere, tf => tf.TierName, t => t.Name, (tf, t) => t);
+        .Join(db.Tiere, tf => tf.TierName, t => t.Name, (tf, t) => t)
+        .ToList();
+    stopwatch.Stop();
 
-    return Results.Ok(tiere.ToList());
+    return new TimedResult<List<Tier>>(tiere, stopwatch.Elapsed).IntoOkResult();
 });
 
 // GET Filialen
-app.MapGet("/filialen", async (TierDbContext db) =>
-    Results.Ok(await db.Filialen.ToListAsync()));
+app.MapGet("/filialen", (TierDbContext db) => {
+    stopwatch.Start();
+    var filialen = db.Filialen.ToList();
+    stopwatch.Stop();
 
-app.MapGet("/filiale/{id}", async (int id, TierDbContext db) =>
+   return new TimedResult<List<Filiale>>(filialen, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("/filiale/{id}", (int id, TierDbContext db) =>
 {
-    var filiale = await db.Filialen.FindAsync(id);
-    return filiale is null ? Results.NotFound() : Results.Ok(filiale);
+    stopwatch.Start();
+    var filiale = db.Filialen.Find(id);
+    stopwatch.Stop();
+
+    if (filiale is null) {
+        return Results.NotFound();
+    }
+
+    return new TimedResult<Filiale>(filiale, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("/filialen/tier/{name}", (string name, TierDbContext db) =>
 {
+    stopwatch.Start();
     var filialen = db.TierFilialen
         .Where(tf => tf.TierName == name)
-        .Join(db.Filialen, tf => tf.FilialeId, f => f.Id, (tf, f) => f);
+        .Join(db.Filialen, tf => tf.FilialeId, f => f.Id, (tf, f) => f)
+        .ToList();
+    stopwatch.Stop();
 
-    return Results.Ok(filialen.ToList());
+    return new TimedResult<List<Filiale>>(filialen, stopwatch.Elapsed).IntoOkResult();
 });
 
 // GET all TierFilialen
-app.MapGet("/tierfilialen", async (TierDbContext db) =>
-    Results.Ok(await db.TierFilialen.ToListAsync()));
+app.MapGet("/tierfilialen", (TierDbContext db) => {
+    stopwatch.Start();
+    var tierFilialen = db.TierFilialen.ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<TierFiliale>>(tierFilialen, stopwatch.Elapsed).IntoOkResult();
+});
 
 app.MapGet("/tierfilialen/tier/{name}", (string name, TierDbContext db) =>
 {
-    var tierFilialen = db.TierFilialen.Where(tf => tf.TierName == name);
+    stopwatch.Start();
+    var tierFilialen = db.TierFilialen.Where(tf => tf.TierName == name).ToList();
+    stopwatch.Stop();
 
-    return Results.Ok(tierFilialen.ToList());
+    return new TimedResult<List<TierFiliale>>(tierFilialen, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("/tierfilialen/filiale/{id}", (int id, TierDbContext db) =>
 {
-    var tierFilialen = db.TierFilialen.Where(tf => tf.FilialeId == id);
+    stopwatch.Start();
+    var tierFilialen = db.TierFilialen.Where(tf => tf.FilialeId == id).ToList();
+    stopwatch.Stop();
 
-    return Results.Ok(tierFilialen.ToList());
+    return new TimedResult<List<TierFiliale>>(tierFilialen, stopwatch.Elapsed).IntoOkResult();
 });
 
 // -----
@@ -116,94 +159,132 @@ app.MapGet("/tierfilialen/filiale/{id}", (int id, TierDbContext db) =>
 // POST a new Tier
 app.MapPost("/tier", (Tier tier, TierDbContext db) =>
 {
+    stopwatch.Start();
     db.Tiere.Add(tier);
     db.SaveChanges();
-    return Results.Created($"/tiere/{tier.Name}", tier);
+    stopwatch.Stop();
+
+    return new TimedResult<Tier>(tier, stopwatch.Elapsed).IntoCreatedResult();
 });
 
 app.MapPut("/tier", (Tier tier, TierDbContext db) =>
 {
+    stopwatch.Start();
     var foundTier = db.Tiere.Find(tier.Name);
-    if (foundTier is null) return Results.NotFound();
+    if (foundTier is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
 
     foundTier.Gewicht = tier.Gewicht;
     foundTier.Groesse = tier.Groesse;
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok(tier);
+    return new TimedResult<Tier>(tier, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapDelete("/tier/{name}", (string name, TierDbContext db) =>
 {
+    stopwatch.Start();
     var foundTier = db.Tiere.Find(name);
-    if (foundTier is null) return Results.NotFound();
+    if (foundTier is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
 
     db.Tiere.Remove(foundTier);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok();
+    return Results.Ok(stopwatch.Elapsed);
 });
 
 // POST a new Filiale
 app.MapPost("/filiale", (Filiale filiale, TierDbContext db) =>
 {
+    stopwatch.Start();
     db.Filialen.Add(filiale);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Created($"/filialen/{filiale.Id}", filiale);
+    return new TimedResult<Filiale>(filiale, stopwatch.Elapsed).IntoCreatedResult();
 });
 
 app.MapPut("/filiale", (Filiale filiale, TierDbContext db) =>
 {
+    stopwatch.Start();
     var foundFiliale = db.Filialen.Find(filiale.Id);
-    if (foundFiliale is null) return Results.NotFound();
+    if (foundFiliale is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
 
     foundFiliale.Adresse = filiale.Adresse;
     foundFiliale.Name = filiale.Name;
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok(filiale);
+    return new TimedResult<Filiale>(foundFiliale, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapDelete("/filiale/{id}", (int id, TierDbContext db) =>
 {
+    stopwatch.Start();
     var foundFiliale = db.Filialen.Find(id);
-    if (foundFiliale is null) return Results.NotFound();
+    if (foundFiliale is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
 
     db.Filialen.Remove(foundFiliale);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok();
+    return Results.Ok(stopwatch.Elapsed);
 });
 
 // POST a new TierFiliale
 app.MapPost("/tierfiliale", (TierFiliale tierFiliale, TierDbContext db) =>
 {
+    stopwatch.Start();
     db.TierFilialen.Add(tierFiliale);
     db.SaveChanges();
-    return Results.Created();
+    stopwatch.Stop();
+
+    return new TimedResult<TierFiliale>(tierFiliale, stopwatch.Elapsed).IntoCreatedResult();
 });
 
 app.MapPut("/tierfiliale", (TierFiliale tierFiliale, TierDbContext db) =>
 {
+    stopwatch.Start();
     var foundTierFiliale = db.TierFilialen.Find(tierFiliale.FilialeId, tierFiliale.TierName);
-    if (foundTierFiliale is null) return Results.NotFound();
+    if (foundTierFiliale is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
 
     foundTierFiliale.Anzahl = tierFiliale.Anzahl;
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok(tierFiliale);
+    return new TimedResult<TierFiliale>(foundTierFiliale, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapDelete("/tierfiliale/{id}/{name}", (int id, string name, TierDbContext db) =>
 {
+    stopwatch.Start();
     var foundTierFiliale = db.TierFilialen.Find(id, name);
-    if (foundTierFiliale is null) return Results.NotFound();
+    if (foundTierFiliale is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
 
     db.TierFilialen.Remove(foundTierFiliale);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok();
+    return Results.Ok(stopwatch.Elapsed);
 });
 
 // Seeding
@@ -224,114 +305,156 @@ app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seeding
 
 // GET Tiere
 app.MapGet("mongo/tiere", (MongoTierDbContext db) => {
+    stopwatch.Start();
     var filialen = db.Filialen;
     var tiere = new List<MongoTier>();
 
     foreach (var f in filialen) {
         tiere.AddRange(f.Tiere);
     }
+    stopwatch.Stop();
 
-    return Results.Ok(tiere);
+    return new TimedResult<List<MongoTier>>(tiere, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("mongo/tier/{name}", (string name, MongoTierDbContext db) => {
+    stopwatch.Start();
     var filialen = db.Filialen;
     var tiere = new List<MongoTier>();
 
     foreach (var f in filialen) {
         tiere.AddRange(f.Tiere.Where(t => t.Name == name));
     }
-    return Results.Ok(tiere);
+    stopwatch.Stop();
+    return new TimedResult<List<MongoTier>>(tiere, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("mongo/tiere/filiale/{id}", (int id, MongoTierDbContext db) => {
-    var tiere = db.Filialen.Find(id)?.Tiere ?? [];
+    stopwatch.Start();
+    var filiale = db.Filialen.Find(id);
+    if (filiale is null) {
+        stopwatch.Stop();
+        return Results.NotFound();
+    }
+    var tiere = filiale.Tiere.ToList();
 
-    return Results.Ok(tiere.ToList());
+    return new TimedResult<List<MongoTier>>(tiere, stopwatch.Elapsed).IntoOkResult();
 });
 
 // GET Filialen
-app.MapGet("mongo/filialen", async (MongoTierDbContext db) =>
-    Results.Ok(await db.Filialen.ToListAsync()));
+app.MapGet("mongo/filialen", (MongoTierDbContext db) => {
+    stopwatch.Start();
+    var filialen = db.Filialen.ToList();
+    stopwatch.Stop();
 
-app.MapGet("mongo/filiale/{id}", async (int id, MongoTierDbContext db) => {
-    var filiale = await db.Filialen.FindAsync(id);
-    return filiale is null ? Results.NotFound() : Results.Ok(filiale);
+    return new TimedResult<List<MongoFiliale>>(filialen, stopwatch.Elapsed).IntoOkResult(); ;
+});
+
+app.MapGet("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
+    stopwatch.Start();
+    var filiale = db.Filialen.Find(id);
+    stopwatch.Stop();
+    if (filiale is null) {
+        return Results.NotFound();
+    }
+
+
+    return new TimedResult<MongoFiliale>(filiale, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("mongo/filialen/tier/{name}", (string name, MongoTierDbContext db) => {
-    var filialen = db.Filialen.Where(f => f.Tiere.FirstOrDefault(t => t.Name == name) == null);
+    stopwatch.Start();
+    var filialen = db.Filialen.Where(f => f.Tiere.FirstOrDefault(t => t.Name == name) == null).ToList();
+    stopwatch.Stop();
 
-    return Results.Ok(filialen.ToList());
+    return new TimedResult<List<MongoFiliale>>(filialen, stopwatch.Elapsed).IntoOkResult();
 });
 
 // -----
 
 // POST a new Tier
 app.MapPost("mongo/tier/{id}", (MongoTier tier, int id, MongoTierDbContext db) => {
-    var filiale = db.Filialen.Find(id);
-    if (filiale is null) {
+    stopwatch.Start();
+    var foundFiliale = db.Filialen.Find(id);
+    if (foundFiliale is null) {
+        stopwatch.Stop();
         return Results.NotFound();
     }
 
-    filiale.Tiere.Add(tier);
+    foundFiliale.Tiere.Add(tier);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Created($"mongo/tiere/{tier.Name}", tier);
+    return new TimedResult<MongoFiliale>(foundFiliale, stopwatch.Elapsed).IntoCreatedResult();
 });
 
 app.MapPut("mongo/tier", (MongoTier tier, MongoTierDbContext db) => {
-    var foundTiere = db.Filialen.SelectMany(f => f.Tiere.Where(t => t.Name == tier.Name));
-    foreach(var t in foundTiere) {
-        t.Anzahl = tier.Anzahl;
-        t.Groesse = tier.Groesse;
-        t.Gewicht = tier.Gewicht;
+    stopwatch.Start();
+    foreach(var f in db.Filialen) {
+        foreach (var t in f.Tiere.Where(t => t.Name == tier.Name)) {
+            t.Anzahl = tier.Anzahl;
+            t.Groesse = tier.Groesse;
+            t.Gewicht = tier.Gewicht;
+        }
     }
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok(foundTiere.ToList());
+    return new TimedResult<MongoTier>(tier, stopwatch.Elapsed);
 });
 
 app.MapDelete("mongo/tier/{name}", (string name, MongoTierDbContext db) => {
-
+    stopwatch.Start();
     foreach (var f in db.Filialen) {
         foreach (var t in f.Tiere.Where(t => t.Name == name)) {
             f.Tiere.Remove(t);
         }
     }
-
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok();
+    return Results.Ok(stopwatch.Elapsed);
 });
 
 // POST a new Filiale
 app.MapPost("mongo/filiale", (MongoFiliale filiale, MongoTierDbContext db) => {
+    stopwatch.Start();
     db.Filialen.Add(filiale);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Created($"mongo/filialen/{filiale.Id}", filiale);
+    return new TimedResult<MongoFiliale>(filiale, stopwatch.Elapsed).IntoCreatedResult();
 });
 
 app.MapPut("mongo/filiale", (MongoFiliale filiale, MongoTierDbContext db) => {
+    stopwatch.Start();
     var foundFiliale = db.Filialen.Find(filiale.Id);
-    if (foundFiliale is null) return Results.NotFound();
+    if (foundFiliale is null) {
+        stopwatch.Stop();
+        return Results.NotFound(); 
+    }
 
     foundFiliale.Adresse = filiale.Adresse;
     foundFiliale.Name = filiale.Name;
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok(filiale);
+    return new TimedResult<MongoFiliale>(foundFiliale, stopwatch.Elapsed);
 });
 
 app.MapDelete("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
+    stopwatch.Start();
     var foundFiliale = db.Filialen.Find(id);
-    if (foundFiliale is null) return Results.NotFound();
+    if (foundFiliale is null) {
+        stopwatch.Stop();
+        return Results.NotFound(); 
+    }
 
     db.Filialen.Remove(foundFiliale);
     db.SaveChanges();
+    stopwatch.Stop();
 
-    return Results.Ok();
+    return Results.Ok(stopwatch.Elapsed);
 });
 
 // Seeding
