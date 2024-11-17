@@ -63,10 +63,26 @@ Stopwatch stopwatch = new();
 // GET Tiere
 app.MapGet("/tiere", (TierDbContext db) => {
     stopwatch.Start();
-    var list = db.Tiere.ToList();
+    var tiere = db.Tiere.ToList();
     stopwatch.Stop();
 
-    return new TimedResult<List<Tier>>(list, stopwatch.Elapsed).IntoOkResult();
+    return new TimedResult<List<Tier>>(tiere, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("/tiere/names", (TierDbContext db) => {
+    stopwatch.Start();
+    var names = db.Tiere.Select(t => t.Name).ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<string>>(names, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("/tiere/names/ordered", (TierDbContext db) => {
+    stopwatch.Start();
+    var names = db.Tiere.Select(t => t.Name).Order().ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<string>>(names, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("/tier/{name}", (string name, TierDbContext db) =>
@@ -100,6 +116,22 @@ app.MapGet("/filialen", (TierDbContext db) => {
     stopwatch.Stop();
 
    return new TimedResult<List<Filiale>>(filialen, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("/filialen/names", (TierDbContext db) => {
+    stopwatch.Start();
+    var names = db.Filialen.Select(f => f.Name).ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<string>>(names, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("/filialen/names/ordered", (TierDbContext db) => {
+    stopwatch.Start();
+    var names = db.Filialen.Select(f => f.Name).Order().ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<string>>(names, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("/filiale/{id}", (int id, TierDbContext db) =>
@@ -305,15 +337,26 @@ app.MapPost("/startseed", (SeedingRequest seedingRequest, SeedingService seeding
 // GET Tiere
 app.MapGet("mongo/tiere", (MongoTierDbContext db) => {
     stopwatch.Start();
-    var filialen = db.Filialen;
-    var tiere = new List<MongoTier>();
-
-    foreach (var f in filialen) {
-        tiere.AddRange(f.Tiere);
-    }
+    var tiere = db.Filialen.Select(f => f.Tiere.ToList()).ToList();
     stopwatch.Stop();
 
-    return new TimedResult<List<MongoTier>>(tiere, stopwatch.Elapsed).IntoOkResult();
+    return new TimedResult<List<List<MongoTier>>>(tiere, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("mongo/tiere/names", (MongoTierDbContext db) => {
+    stopwatch.Start();
+    var tiere = db.Filialen.Select(f => f.Tiere.Select(t => t.Name).ToList()).ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<List<string>>>(tiere, stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapGet("mongo/tiere/names/ordered", (MongoTierDbContext db) => {
+    stopwatch.Start();
+    var tiere = db.Filialen.Select(f => f.Tiere.Select(t => t.Name).Order().ToList()).ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<List<string>>>(tiere, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapGet("mongo/tier/{name}", (string name, MongoTierDbContext db) => {
@@ -349,6 +392,22 @@ app.MapGet("mongo/filialen", (MongoTierDbContext db) => {
     return new TimedResult<List<MongoFiliale>>(filialen, stopwatch.Elapsed).IntoOkResult(); ;
 });
 
+app.MapGet("mongo/filialen/names", (MongoTierDbContext db) => {
+    stopwatch.Start();
+    var filialen = db.Filialen.Select(f => f.Name).ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<string>>(filialen, stopwatch.Elapsed).IntoOkResult(); ;
+});
+
+app.MapGet("mongo/filialen/names/ordered", (MongoTierDbContext db) => {
+    stopwatch.Start();
+    var filialen = db.Filialen.Select(f => f.Name).Order().ToList();
+    stopwatch.Stop();
+
+    return new TimedResult<List<string>>(filialen, stopwatch.Elapsed).IntoOkResult(); ;
+});
+
 app.MapGet("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
     stopwatch.Start();
     var filiale = db.Filialen.Find(id);
@@ -356,7 +415,6 @@ app.MapGet("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
     if (filiale is null) {
         return Results.NotFound();
     }
-
 
     return new TimedResult<MongoFiliale>(filiale, stopwatch.Elapsed).IntoOkResult();
 });
