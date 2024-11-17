@@ -48,7 +48,6 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
 
-    mongoDb.Database.AutoTransactionBehavior = AutoTransactionBehavior.Never;
     mongoDb.Database.EnsureCreated();
 }
 
