@@ -565,6 +565,27 @@ app.MapPost("mongo/startseed", (MongoSeedingRequest mongoSeedingRequest, Seeding
     return Results.Ok(seedingService.stopwatch.Elapsed);
 });
 
+app.MapPost("mongo/index", () => {
+    stopwatch.Start();
+    var collection = mongoDatabase.GetCollection<dynamic>("filialen");
+
+    var indexKeys = Builders<dynamic>.IndexKeys.Ascending("name");
+    var indexModel = new CreateIndexModel<dynamic>(indexKeys);
+    stopwatch.Stop();
+
+    return new TimedResult<string>(collection.Indexes.CreateOne(indexModel), stopwatch.Elapsed).IntoOkResult();
+});
+
+app.MapDelete("mongo/index", () => {
+    stopwatch.Start();
+    var collection = mongoDatabase.GetCollection<dynamic>("filialen");
+
+    collection.Indexes.DropAll();
+    stopwatch.Stop();
+
+    return Results.Ok(stopwatch.Elapsed);
+});
+
 app.Run();
 
 

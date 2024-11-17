@@ -1,5 +1,4 @@
-﻿using DBI_Project_2024_25.Models;
-using DBI_Project_2024_25.Models.MongoModels;
+﻿using DBI_Project_2024_25.Models.MongoModels;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.EntityFrameworkCore.Extensions;
 
