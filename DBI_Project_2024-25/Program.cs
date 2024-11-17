@@ -439,7 +439,7 @@ app.MapPut("mongo/filiale", (MongoFiliale filiale, MongoTierDbContext db) => {
     db.SaveChanges();
     stopwatch.Stop();
 
-    return new TimedResult<MongoFiliale>(foundFiliale, stopwatch.Elapsed);
+    return new TimedResult<MongoFiliale>(foundFiliale, stopwatch.Elapsed).IntoOkResult();
 });
 
 app.MapDelete("mongo/filiale/{id}", (int id, MongoTierDbContext db) => {
