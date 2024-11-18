@@ -40,6 +40,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
+builder.Services.Configure<MongoDBConfiguration>(builder.Configuration.GetSection("MongoDB"));
+builder.Services.AddSingleton<IMongoDBService, MongoDBService>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -573,6 +576,29 @@ app.MapPost("mongo/startseed", (MongoSeedingRequest mongoSeedingRequest, Seeding
     );
 
     return Results.Ok(seedingService.stopwatch.Elapsed);
+});
+
+app.MapPost("/mongo/connection/{mode}", (string mode, IMongoDBService mongoService) =>
+{
+    try
+    {
+        mongoService.SwitchConnectionMode(mode);
+        return Results.Ok($"Successfully switched to {mode} connection");
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to switch connection: {ex.Message}");
+    }
+});
+
+// Endpoint to get current connection mode
+app.MapGet("/mongo/connection", (IMongoDBService mongoService) =>
+{
+    return Results.Ok(mongoService.GetCurrentConnectionMode());
 });
 app.UseCors();
 app.Run();

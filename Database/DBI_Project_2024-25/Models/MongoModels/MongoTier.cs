@@ -1,6 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-
-namespace DBI_Project_2024_25.Models.MongoModels;
+﻿using Newtonsoft.Json;
+using MongoDB.Bson.Serialization.Attributes;
 
 public class MongoTier
 {
@@ -13,8 +12,19 @@ public class MongoTier
         Gewicht = gewicht;
     }
 
-    [BsonElement("name")] public string Name { get; set; } = default!;
-    [BsonElement("groesse")] public decimal Groesse { get; set; } = -1;
-    [BsonElement("gewicht")] public decimal Gewicht { get; set; } = -1;
-    [BsonElement("anzahl")] public int Anzahl { get; set; } = -1;
+    [BsonElement("name")]
+    [JsonProperty("name")]
+    public string Name { get; set; } = default!;
+
+    [BsonElement("groesse")]
+    [JsonProperty("groesse")]
+    public decimal Groesse { get; set; } = -1;
+
+    [BsonElement("gewicht")]
+    [JsonProperty("gewicht")]
+    public decimal Gewicht { get; set; } = -1;
+
+    [BsonElement("anzahl")]
+    [JsonProperty("anzahl")]
+    public int Anzahl { get; set; } = -1;
 }

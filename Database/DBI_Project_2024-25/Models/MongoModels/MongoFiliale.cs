@@ -1,7 +1,7 @@
-﻿using MongoDB.Bson;
+﻿using Newtonsoft.Json;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-
-namespace DBI_Project_2024_25.Models.MongoModels;
+using System.Collections.Generic;
 
 public class MongoFiliale
 {
@@ -16,9 +16,18 @@ public class MongoFiliale
 
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
+    [JsonProperty("id")]
     public string Id { get; set; } = default!;
 
-    [BsonElement("name")] public string Name { get; set; } = default!;
-    [BsonElement("addresse")] public string Adresse { get; set; } = default!;
-    [BsonElement("tiere")] public ICollection<MongoTier> Tiere { get; set; } = new List<MongoTier>();
+    [BsonElement("name")]
+    [JsonProperty("name")]
+    public string Name { get; set; } = default!;
+
+    [BsonElement("adresse")] // Corrected from "addresse"
+    [JsonProperty("adresse")]
+    public string Adresse { get; set; } = default!;
+
+    [BsonElement("tiere")]
+    [JsonProperty("tiere")]
+    public ICollection<MongoTier> Tiere { get; set; } = new List<MongoTier>();
 }
