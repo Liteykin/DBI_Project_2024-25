@@ -4,7 +4,9 @@ namespace DBI_Project_2024_25.Models;
 
 public class Filiale
 {
-    public Filiale() {}
+    public Filiale()
+    {
+    }
 
     public Filiale(int id, string name, string adresse)
     {

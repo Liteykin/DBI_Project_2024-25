@@ -1,66 +1,67 @@
 ﻿using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
-namespace DBI_Project_2024_25.Infrastructure
+namespace DBI_Project_2024_25.Infrastructure;
+
+public class MongoDBConfiguration
 {
-    public class MongoDBConfiguration
+    public string ConnectionMode { get; set; } = "Local";
+    public string LocalConnectionString { get; set; } = "mongodb://localhost:27017";
+
+    public string AtlasConnectionString { get; set; } =
+        "mongodb+srv://liteykinmark:lWKP596b8zynKh58@cluster0.kfpsj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+    public string DatabaseName { get; set; } = "your_database_name";
+}
+
+public interface IMongoDBService
+{
+    IMongoDatabase GetDatabase();
+    void SwitchConnectionMode(string mode);
+    string GetCurrentConnectionMode();
+}
+
+public class MongoDBService : IMongoDBService
+{
+    private readonly MongoDBConfiguration _config;
+    private IMongoClient _client;
+    private readonly string _databaseName;
+
+    public MongoDBService(IOptions<MongoDBConfiguration> options)
     {
-        public string ConnectionMode { get; set; } = "Local";
-        public string LocalConnectionString { get; set; } = "mongodb://localhost:27017";
-        public string AtlasConnectionString { get; set; } = 
-            "mongodb+srv://liteykinmark:lWKP596b8zynKh58@cluster0.kfpsj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-        public string DatabaseName { get; set; } = "your_database_name";
+        _config = options.Value;
+        _databaseName = _config.DatabaseName;
+        InitializeClient();
     }
 
-    public interface IMongoDBService
+    public IMongoDatabase GetDatabase()
     {
-        IMongoDatabase GetDatabase();
-        void SwitchConnectionMode(string mode);
-        string GetCurrentConnectionMode();
+        return _client.GetDatabase(_databaseName);
     }
 
-    public class MongoDBService : IMongoDBService
+    public void SwitchConnectionMode(string mode)
     {
-        private readonly MongoDBConfiguration _config;
-        private IMongoClient _client;
-        private string _databaseName;
+        if (mode != "Local" && mode != "Atlas")
+            throw new ArgumentException("Mode must be either 'Local' or 'Atlas'");
 
-        public MongoDBService(IOptions<MongoDBConfiguration> options)
+        if (_config.ConnectionMode != mode)
         {
-            _config = options.Value;
-            _databaseName = _config.DatabaseName;
+            _config.ConnectionMode = mode;
             InitializeClient();
         }
+    }
 
-        private void InitializeClient()
-        {
-            var connectionString = _config.ConnectionMode == "Atlas"
-                ? _config.AtlasConnectionString
-                : _config.LocalConnectionString;
+    public string GetCurrentConnectionMode()
+    {
+        return _config.ConnectionMode;
+    }
 
-            _client = new MongoClient(connectionString);
-        }
+    private void InitializeClient()
+    {
+        var connectionString = _config.ConnectionMode == "Atlas"
+            ? _config.AtlasConnectionString
+            : _config.LocalConnectionString;
 
-        public IMongoDatabase GetDatabase()
-        {
-            return _client.GetDatabase(_databaseName);
-        }
-
-        public void SwitchConnectionMode(string mode)
-        {
-            if (mode != "Local" && mode != "Atlas")
-                throw new ArgumentException("Mode must be either 'Local' or 'Atlas'");
-
-            if (_config.ConnectionMode != mode)
-            {
-                _config.ConnectionMode = mode;
-                InitializeClient();
-            }
-        }
-
-        public string GetCurrentConnectionMode()
-        {
-            return _config.ConnectionMode;
-        }
+        _client = new MongoClient(connectionString);
     }
 }

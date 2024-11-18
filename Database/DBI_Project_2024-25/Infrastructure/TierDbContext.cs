@@ -5,7 +5,9 @@ namespace DBI_Project_2024_25.Infrastructure;
 
 public class TierDbContext : DbContext
 {
-    public TierDbContext(DbContextOptions<TierDbContext> options) : base(options) {}
+    public TierDbContext(DbContextOptions<TierDbContext> options) : base(options)
+    {
+    }
 
     public DbSet<Tier> Tiere { get; set; }
     public DbSet<Filiale> Filialen { get; set; }

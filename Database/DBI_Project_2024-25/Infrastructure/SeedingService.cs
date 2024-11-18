@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using Bogus;
 using DBI_Project_2024_25.Models;
-using DBI_Project_2024_25.Models.MongoModels;
 
 namespace DBI_Project_2024_25.Infrastructure;
 
@@ -10,8 +9,6 @@ public class SeedingService
     private const int SEED = 1245899876;
 
     public Stopwatch stopwatch = new();
-
-    public SeedingService() {}
 
     public List<Tier> GenerateTiere(int count)
     {
@@ -25,7 +22,8 @@ public class SeedingService
         return faker.Generate(count);
     }
 
-    public List<MongoTier> GenerateTiereMongo(int count, long idShift) {
+    public List<MongoTier> GenerateTiereMongo(int count, long idShift)
+    {
         var id = idShift;
         var faker = new Faker<MongoTier>()
             .RuleFor(t => t.Name, f => f.Lorem.Word() + id++)
@@ -50,7 +48,8 @@ public class SeedingService
         return faker.Generate(count);
     }
 
-    public List<MongoFiliale> GenerateFilialenMongo(int count, int tiereProFiliale) {
+    public List<MongoFiliale> GenerateFilialenMongo(int count, int tiereProFiliale)
+    {
         var faker = new Faker<MongoFiliale>()
             .RuleFor("Id", f => GenerateHex())
             .RuleFor(f => f.Name, f => f.Company.CompanyName() + f.IndexFaker)
@@ -70,7 +69,8 @@ public class SeedingService
         var allowedIndecies = Enumerable.Range(0, filialen.Count).ToList();
 
         var faker = new Faker<TierFiliale>()
-            .RuleFor(tf => tf.FilialeId, f => { 
+            .RuleFor(tf => tf.FilialeId, f =>
+            {
                 var index = f.PickRandom(allowedIndecies);
                 allowedIndecies.Remove(index);
                 return filialen[index].Id;
@@ -108,7 +108,8 @@ public class SeedingService
         stopwatch.Stop();
     }
 
-    public void SeedMongo(MongoTierDbContext db, int filialeCount, int tiereProFiliale) {
+    public void SeedMongo(MongoTierDbContext db, int filialeCount, int tiereProFiliale)
+    {
         db.Filialen.RemoveRange(db.Filialen);
         db.SaveChanges();
 
@@ -122,16 +123,15 @@ public class SeedingService
         stopwatch.Stop();
     }
 
-    private static string GenerateHex() {
+    private static string GenerateHex()
+    {
         // Generate a 24 character hex string by replacing any non-hex character
         // with a valid hexadecimal digit
         var validHex = "0123456789abcdef";
         var random = new Random(SEED);
-        string result = DateTime.Now.Ticks.ToString();
+        var result = DateTime.Now.Ticks.ToString();
 
-        while (result.Length < 24) {
-            result += validHex[random.Next(validHex.Length)];
-        }
+        while (result.Length < 24) result += validHex[random.Next(validHex.Length)];
 
         return result;
     }

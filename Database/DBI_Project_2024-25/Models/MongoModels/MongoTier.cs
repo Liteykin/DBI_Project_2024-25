@@ -1,9 +1,11 @@
-﻿using Newtonsoft.Json;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using Newtonsoft.Json;
 
 public class MongoTier
 {
-    public MongoTier() { }
+    public MongoTier()
+    {
+    }
 
     public MongoTier(string name, decimal groesse, decimal gewicht)
     {

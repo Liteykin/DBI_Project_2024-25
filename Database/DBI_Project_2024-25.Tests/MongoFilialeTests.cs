@@ -1,9 +1,6 @@
-﻿using Xunit;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Schema;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using DBI_Project_2024_25.Models.MongoModels;
+using Newtonsoft.Json.Schema;
 
 public class MongoFilialeTests
 {

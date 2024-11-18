@@ -1,11 +1,12 @@
-﻿using Newtonsoft.Json;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using System.Collections.Generic;
+using Newtonsoft.Json;
 
 public class MongoFiliale
 {
-    public MongoFiliale() { }
+    public MongoFiliale()
+    {
+    }
 
     public MongoFiliale(string id, string name, string adresse)
     {

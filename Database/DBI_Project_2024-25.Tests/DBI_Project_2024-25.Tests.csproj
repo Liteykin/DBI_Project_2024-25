@@ -12,10 +12,10 @@
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.0"/>
-        <PackageReference Include="FluentAssertions" Version="6.12.2" />
+        <PackageReference Include="FluentAssertions" Version="6.12.2"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-        <PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+        <PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1"/>
         <PackageReference Include="xunit" Version="2.5.3"/>
     </ItemGroup>
 
@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\DBI_Project_2024-25\DBI_Project_2024-25.csproj" />
+        <ProjectReference Include="..\DBI_Project_2024-25\DBI_Project_2024-25.csproj"/>
     </ItemGroup>
 
 </Project>

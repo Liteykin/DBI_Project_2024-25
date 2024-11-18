@@ -4,12 +4,25 @@
   "title": "MongoTier",
   "type": "object",
   "properties": {
-    "name": { "type": "string" },
-    "groesse": { "type": "number" },
-    "gewicht": { "type": "number" },
-    "anzahl": { "type": "integer" }
+    "name": {
+      "type": "string"
+    },
+    "groesse": {
+      "type": "number"
+    },
+    "gewicht": {
+      "type": "number"
+    },
+    "anzahl": {
+      "type": "integer"
+    }
   },
-  "required": ["name", "groesse", "gewicht", "anzahl"]
+  "required": [
+    "name",
+    "groesse",
+    "gewicht",
+    "anzahl"
+  ]
 }
 
 // MongoFilialeSchema.json
@@ -18,9 +31,15 @@
   "title": "MongoFiliale",
   "type": "object",
   "properties": {
-    "id": { "type": "string" },
-    "name": { "type": "string" },
-    "adresse": { "type": "string" },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "adresse": {
+      "type": "string"
+    },
     "tiere": {
       "type": "array",
       "items": {
@@ -28,17 +47,35 @@
       }
     }
   },
-  "required": ["id", "name", "adresse", "tiere"],
+  "required": [
+    "id",
+    "name",
+    "adresse",
+    "tiere"
+  ],
   "definitions": {
     "MongoTier": {
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
-        "groesse": { "type": "number" },
-        "gewicht": { "type": "number" },
-        "anzahl": { "type": "integer" }
+        "name": {
+          "type": "string"
+        },
+        "groesse": {
+          "type": "number"
+        },
+        "gewicht": {
+          "type": "number"
+        },
+        "anzahl": {
+          "type": "integer"
+        }
       },
-      "required": ["name", "groesse", "gewicht", "anzahl"]
+      "required": [
+        "name",
+        "groesse",
+        "gewicht",
+        "anzahl"
+      ]
     }
   }
 }
