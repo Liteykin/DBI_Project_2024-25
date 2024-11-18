@@ -5,9 +5,12 @@ using DBI_Project_2024_25.Models;
 using DBI_Project_2024_25.Models.MongoModels;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
-var builder = WebApplication.CreateSlimBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -18,31 +21,41 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+
+// Configure SQL Database
 builder.Services.AddDbContext<TierDbContext>(options =>
 {
     if (builder.Environment.IsDevelopment()) options.EnableSensitiveDataLogging();
     options.UseSqlite(builder.Configuration.GetConnectionString("Sqlite"));
 });
 
-var client = new MongoClient(builder.Configuration.GetConnectionString("MongoDB"));
-var mongoDatabase = client.GetDatabase("dbi_project_2024-25");
+// Configure MongoDBConfiguration
+builder.Services.Configure<MongoDBConfiguration>(builder.Configuration.GetSection("MongoDB"));
 
-builder.Services.AddDbContext<MongoTierDbContext>(options => {
+// Register IMongoDBService
+builder.Services.AddSingleton<IMongoDBService, MongoDBService>();
+
+// Use IMongoDBService to configure MongoTierDbContext
+builder.Services.AddDbContext<MongoTierDbContext>((serviceProvider, options) =>
+{
     if (builder.Environment.IsDevelopment()) options.EnableSensitiveDataLogging();
-    options.UseMongoDB(mongoDatabase.Client, mongoDatabase.DatabaseNamespace.DatabaseName);
+
+    var mongoService = serviceProvider.GetRequiredService<IMongoDBService>();
+    var database = mongoService.GetDatabase();
+    options.UseMongoDB(database.Client, database.DatabaseNamespace.DatabaseName);
 });
 
+// Configure routing options
 builder.Services.Configure<RouteOptions>(
     options => options.SetParameterPolicy<RegexInlineRouteConstraint>("regex"));
 
+// Configure JSON options
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
-builder.Services.Configure<MongoDBConfiguration>(builder.Configuration.GetSection("MongoDB"));
-builder.Services.AddSingleton<IMongoDBService, MongoDBService>();
-
+// Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -51,6 +64,7 @@ builder.Services.AddScoped<SeedingService>();
 
 var app = builder.Build();
 
+// Ensure databases are created
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TierDbContext>();
@@ -59,14 +73,43 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
 
+    // For MongoDB, ensure the necessary collections are created
     mongoDb.Database.EnsureCreated();
 }
 
+// Configure middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors();
+
+// MongoDB connection switching endpoint
+app.MapPost("/mongo/connection/{mode}", (string mode, IMongoDBService mongoService) =>
+{
+    try
+    {
+        mongoService.SwitchConnectionMode(mode);
+        return Results.Ok($"Successfully switched to {mode} connection");
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to switch connection: {ex.Message}");
+    }
+});
+
+// Endpoint to get current connection mode
+app.MapGet("/mongo/connection", (IMongoDBService mongoService) =>
+{
+    return Results.Ok(mongoService.GetCurrentConnectionMode());
+});
+
 
 Stopwatch stopwatch = new();
 
@@ -578,29 +621,6 @@ app.MapPost("mongo/startseed", (MongoSeedingRequest mongoSeedingRequest, Seeding
     return Results.Ok(seedingService.stopwatch.Elapsed);
 });
 
-app.MapPost("/mongo/connection/{mode}", (string mode, IMongoDBService mongoService) =>
-{
-    try
-    {
-        mongoService.SwitchConnectionMode(mode);
-        return Results.Ok($"Successfully switched to {mode} connection");
-    }
-    catch (ArgumentException ex)
-    {
-        return Results.BadRequest(ex.Message);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Failed to switch connection: {ex.Message}");
-    }
-});
-
-// Endpoint to get current connection mode
-app.MapGet("/mongo/connection", (IMongoDBService mongoService) =>
-{
-    return Results.Ok(mongoService.GetCurrentConnectionMode());
-});
-app.UseCors();
 app.Run();
 
 

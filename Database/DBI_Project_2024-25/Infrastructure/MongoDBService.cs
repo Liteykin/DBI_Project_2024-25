@@ -1,13 +1,15 @@
-﻿using MongoDB.Driver;
+﻿using Microsoft.Extensions.Options;
+using MongoDB.Driver;
 
 namespace DBI_Project_2024_25.Infrastructure
 {
     public class MongoDBConfiguration
     {
-        public string ConnectionMode { get; set; } = "Local"; // "Local" or "Atlas"
+        public string ConnectionMode { get; set; } = "Local";
         public string LocalConnectionString { get; set; } = "mongodb://localhost:27017";
         public string AtlasConnectionString { get; set; } = 
-            "mongodb+srv://liteykinmark:lWKP596b8ynKh58@cluster0.mongodb.net/dbi_project_2024-25?retryWrites=true&w=majority";
+            "mongodb+srv://liteykinmark:lWKP596b8zynKh58@cluster0.kfpsj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+        public string DatabaseName { get; set; } = "your_database_name";
     }
 
     public interface IMongoDBService
@@ -21,20 +23,21 @@ namespace DBI_Project_2024_25.Infrastructure
     {
         private readonly MongoDBConfiguration _config;
         private IMongoClient _client;
-        private readonly string _databaseName = "dbi_project_2024-25";
+        private string _databaseName;
 
-        public MongoDBService(MongoDBConfiguration config)
+        public MongoDBService(IOptions<MongoDBConfiguration> options)
         {
-            _config = config;
+            _config = options.Value;
+            _databaseName = _config.DatabaseName;
             InitializeClient();
         }
 
         private void InitializeClient()
         {
-            var connectionString = _config.ConnectionMode == "Atlas" 
-                ? _config.AtlasConnectionString 
+            var connectionString = _config.ConnectionMode == "Atlas"
+                ? _config.AtlasConnectionString
                 : _config.LocalConnectionString;
-                
+
             _client = new MongoClient(connectionString);
         }
 
