@@ -1,179 +1,254 @@
-"use client";
-
-import React, { useEffect, useState, useCallback } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { useState } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Package,
+  Building,
+  Users,
+  Filter,
+  RefreshCw,
+  Database,
+  Settings,
+  Moon,
+  Sun,
+  BarChart2,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
+import { PerformanceTestDialog } from "./components/PerformanceTestDialog";
 
-interface DataTableProps {
-  data: any[];
+interface SidebarProps {
   selectedSection: {
     name: string;
-    type: string;
+    route: string;
+    icon: string;
+    description: string;
   };
+  onSectionChange: (sectionName: string) => void;
+  onRefresh: () => void;
+  onFilter: () => void;
+  onSeed: () => void;
+  isSyncing: boolean;
   selectedDbType: string;
-  onEdit: (id: string | number, data: any) => void;
-  onDelete: (id: string | number) => void;
 }
 
-export function DataTable({
-  data,
+export function Sidebar({
   selectedSection,
+  onSectionChange,
+  onRefresh,
+  onFilter,
+  onSeed,
+  isSyncing,
   selectedDbType,
-  onEdit,
-  onDelete,
-}: DataTableProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const parentRef = React.useRef<HTMLDivElement>(null);
+}: SidebarProps) {
+  const { theme, setTheme } = useTheme();
+  const [expandedSection, setExpandedSection] = useState<string | null>("data");
+  const [showPerformanceDialog, setShowPerformanceDialog] = useState(false);
 
-  const getColumns = useCallback(() => {
-    switch (selectedSection.name) {
-      case "Tiere":
-        return selectedDbType === "MongoDB"
-          ? [
-              { key: "name", label: "Name" },
-              { key: "groesse", label: "Größe" },
-              { key: "gewicht", label: "Gewicht" },
-              { key: "anzahl", label: "Anzahl" },
-            ]
-          : [
-              { key: "name", label: "Name" },
-              { key: "groesse", label: "Größe" },
-              { key: "gewicht", label: "Gewicht" },
-            ];
-      case "Filialen":
-        return [
-          { key: "name", label: "Name" },
-          { key: "adresse", label: "Adresse" },
-          { key: "tiere", label: "Tiere", isObject: true },
-        ];
-      case "TierFilialen":
-        if (selectedDbType === "MongoDB") return [];
-        return [
-          { key: "filialeId", label: "Filiale ID" },
-          { key: "tierName", label: "Tier Name" },
-          { key: "anzahl", label: "Anzahl" },
-        ];
-      default:
-        return [];
-    }
-  }, [selectedSection.name, selectedDbType]);
+  const menuSections = [
+    {
+      id: "data",
+      title: "Data Management",
+      items: [
+        {
+          id: "Tiere",
+          name: "Animals",
+          icon: Package,
+          description: "Manage animal inventory",
+          badge: selectedDbType === "MongoDB" ? "Document-based" : "Relational",
+        },
+        {
+          id: "Filialen",
+          name: "Branches",
+          icon: Building,
+          description: "Manage branch locations",
+          badge: selectedDbType === "MongoDB" ? "Embedded" : "Relational",
+        },
+        {
+          id: "TierFilialen",
+          name: "Relations",
+          icon: Users,
+          description: "Animal-branch relationships",
+          badge: selectedDbType === "MongoDB" ? "Embedded" : "Relational",
+          disabled: selectedDbType === "MongoDB",
+        },
+      ],
+    },
+    {
+      id: "tools",
+      title: "Tools",
+      items: [
+        {
+          id: "filter",
+          name: "Filter Data",
+          icon: Filter,
+          action: onFilter,
+          description: "Filter current view",
+        },
+        {
+          id: "refresh",
+          name: "Refresh Data",
+          icon: RefreshCw,
+          action: onRefresh,
+          description: "Sync with database",
+        },
+        {
+          id: "seed",
+          name: "Seed Database",
+          icon: Database,
+          action: onSeed,
+          description: "Generate test data",
+        },
+        {
+          id: "performance",
+          name: "Performance",
+          icon: BarChart2,
+          action: () => setShowPerformanceDialog(true),
+          description: "Analyze performance",
+        },
+      ],
+    },
+  ];
 
-  const columns = getColumns();
-
-  const rowVirtualizer = useVirtualizer({
-    count: data.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 50,
-    overscan: 5,
-  });
-
-  const renderCell = (item: any, column: any) => {
-    if (column.isObject && Array.isArray(item[column.key])) {
-      return (
-        <div className="max-w-md">
-          {item[column.key].map((tier: any, index: number) => (
-            <span
-              key={index}
-              className="inline-block bg-primary/10 rounded-full px-3 py-1 text-sm font-semibold mr-2 mb-2"
-            >
-              {tier.name} ({tier.anzahl})
-            </span>
-          ))}
-        </div>
-      );
-    }
-    return item[column.key];
+  const toggleSection = (sectionId: string) => {
+    setExpandedSection(expandedSection === sectionId ? null : sectionId);
   };
 
-  // Don't render for MongoDB TierFilialen
-  if (selectedDbType === "MongoDB" && selectedSection.name === "TierFilialen") {
-    return (
-      <div className="text-center p-4 text-muted-foreground">
-        Tier-Filiale relationships are managed directly within the Filialen
-        collection in MongoDB.
-      </div>
-    );
-  }
-
   return (
-    <div
-      ref={parentRef}
-      className="overflow-auto max-h-[600px] rounded-md border"
-    >
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.key}>{column.label}</TableHead>
-            ))}
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading ? (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length + 1}
-                className="h-24 text-center"
+    <div className="h-full px-3 py-4 overflow-y-auto bg-background border-r">
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 px-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center space-x-2"
+          >
+            <BarChart2 className="h-6 w-6 text-primary" />
+            <span className="font-semibold text-lg">Data Manager</span>
+          </motion.div>
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
+          </button>
+        </div>
+
+        {/* Sync Status */}
+        {isSyncing && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-4 px-2"
+          >
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Syncing data...</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Main Navigation */}
+        <div className="space-y-4">
+          {menuSections.map((section) => (
+            <div key={section.id} className="space-y-2">
+              <button
+                onClick={() => toggleSection(section.id)}
+                className="w-full flex items-center justify-between px-2 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
               >
-                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-              </TableCell>
-            </TableRow>
-          ) : (
-            rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const item = data[virtualRow.index];
-              return (
-                <motion.tr
-                  key={virtualRow.index}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="relative"
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                >
-                  {columns.map((column) => (
-                    <TableCell key={column.key}>
-                      {renderCell(item, column)}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(item.id || item.name, item)}
+                {section.title}
+                {expandedSection === section.id ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {expandedSection === section.id && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-1 overflow-hidden"
+                  >
+                    {section.items.map((item) => (
+                      <motion.button
+                        key={item.id}
+                        whileHover={{ scale: 1.02, translateX: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() =>
+                          item.action ? item.action() : onSectionChange(item.id)
+                        }
+                        disabled={item.disabled}
+                        className={`
+                          flex items-center w-full px-4 py-2 text-sm font-medium rounded-md
+                          transition-colors relative group
+                          ${
+                            selectedSection.name === item.id
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }
+                          ${
+                            item.disabled ? "opacity-50 cursor-not-allowed" : ""
+                          }
+                        `}
+                        title={
+                          item.disabled
+                            ? "Not available in MongoDB mode"
+                            : item.description
+                        }
                       >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(item.id || item.name)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </motion.tr>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+                        <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
+                        <div className="flex flex-col items-start flex-1 min-w-0">
+                          <span className="truncate">{item.name}</span>
+                          <span className="text-xs opacity-70 truncate">
+                            {item.description}
+                          </span>
+                        </div>
+                        {item.badge && (
+                          <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                            {item.badge}
+                          </span>
+                        )}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+
+        {/* Database Info */}
+        <div className="mt-auto pt-4 px-2">
+          <div className="rounded-lg bg-primary/10 p-4">
+            <div className="flex items-center space-x-2">
+              <Database className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">{selectedDbType}</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {selectedDbType === "MongoDB"
+                ? "Document-based storage"
+                : "Relational database"}
+            </p>
+          </div>
+        </div>
+
+        <PerformanceTestDialog
+          isOpen={showPerformanceDialog}
+          onClose={() => setShowPerformanceDialog(false)}
+          currentSection={selectedSection.name}
+          dbType={selectedDbType}
+        />
+      </div>
     </div>
   );
 }
