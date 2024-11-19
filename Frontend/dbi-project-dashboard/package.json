@@ -37,6 +37,7 @@
     "react-dom": "19.0.0-rc-66855b96-20241106",
     "react-hot-toast": "^2.4.1",
     "recharts": "^2.13.3",
+    "shadcn": "^2.1.6",
     "shadcn-ui": "^0.9.3",
     "table": "^6.8.2",
     "tabs": "^0.2.0",

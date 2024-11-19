@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 const apiSections = [
   {
@@ -82,6 +84,13 @@ export default function Dashboard() {
   const [filterValue, setFilterValue] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const { theme, setTheme } = useTheme();
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: data.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 50,
+    overscan: 5,
+  });
 
   interface TimedResult<T> {
     result: T;
@@ -204,6 +213,10 @@ export default function Dashboard() {
       (section) => section.name === sectionName
     );
     if (newSection) {
+      if (newSection.name === "Tiere" && selectedDbType === "MongoDB") {
+        toast.error("Animal management is not available in MongoDB mode");
+        return;
+      }
       setSelectedSection(newSection);
       setFilterValue("");
       setFilteredData([]);
@@ -252,7 +265,7 @@ export default function Dashboard() {
       toast.success(`Filter applied: Found ${filteredResults.length} results`);
     } catch (error) {
       console.error("Error applying filter:", error);
-      toast.error("Failed to apply filter");
+      toast.error(error.message || "Failed to apply filter");
       setFilteredData([]);
     } finally {
       setIsLoading(false);
@@ -323,70 +336,67 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdate = async (id: string | number, data: any) => {
-    setIsLoading(true);
+  const handleUpdate = async (id: string | number, formData: any) => {
     try {
-      const isMongoDb = selectedDbType === "MongoDB";
-      switch (selectedSection.name) {
-        case "Tiere":
-          await apiService.updateTier({ ...data, name: id }, isMongoDb);
-          break;
-        case "Filialen":
-          await apiService.updateFiliale({ ...data, id }, isMongoDb);
-          break;
-        case "TierFilialen":
-          if (!isMongoDb) {
-            const [filialeId, tierName] = (id as string).split("-");
-            await apiService.updateTierFiliale(
-              {
-                ...data,
-                filialeId: parseInt(filialeId),
-                tierName,
-              },
-              isMongoDb
-            );
-          }
-          break;
+      const baseUrl =
+        selectedDbType === "MongoDB" ? `${API_BASE_URL}/mongo` : API_BASE_URL;
+
+      let endpoint = "";
+      if (selectedDbType === "MongoDB" && selectedSection.name === "Filialen") {
+        endpoint = "/filiale";
+      } else if (selectedSection.name === "Tiere") {
+        endpoint = "/tier";
+      } else if (selectedSection.name === "Filialen") {
+        endpoint = "/filiale";
+      } else {
+        endpoint = "/tierfiliale";
       }
-      toast.success(`${selectedSection.name} updated successfully`);
+
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update item");
+      }
+
+      toast.success("Updated successfully");
       await fetchData();
     } catch (error) {
-      toast.error(`Failed to update ${selectedSection.name}`);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      console.error("Error updating item:", error);
+      toast.error(error.message || "Failed to update item");
     }
   };
 
   const handleDelete = async (id: string | number) => {
-    setIsLoading(true);
     try {
-      const isMongoDb = selectedDbType === "MongoDB";
-      switch (selectedSection.name) {
-        case "Tiere":
-          await apiService.deleteTier(id as string, isMongoDb);
-          break;
-        case "Filialen":
-          await apiService.deleteFiliale(id as number, isMongoDb);
-          break;
-        case "TierFilialen":
-          if (!isMongoDb) {
-            const [filialeId, tierName] = (id as string).split("-");
-            await apiService.deleteTierFiliale(
-              parseInt(filialeId),
-              tierName,
-              isMongoDb
-            );
-          }
-          break;
+      const baseUrl =
+        selectedDbType === "MongoDB" ? `${API_BASE_URL}/mongo` : API_BASE_URL;
+
+      const endpoint =
+        selectedSection.name === "Tiere"
+          ? `/tier/${id}`
+          : selectedSection.name === "Filialen"
+          ? `/filiale/${id}`
+          : `/tierfiliale/${id}`;
+
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete item");
       }
-      toast.success(`${selectedSection.name} deleted successfully`);
+
+      toast.success("Deleted successfully");
       await fetchData();
     } catch (error) {
-      toast.error(`Failed to delete ${selectedSection.name}`);
-      console.error("Delete error:", error);
-    } finally {
-      setIsLoading(false);
+      console.error("Error deleting item:", error);
+      toast.error(error.message || "Failed to delete item");
     }
   };
 
@@ -423,7 +433,7 @@ export default function Dashboard() {
 
       <div className="flex-1 ml-64">
         <main className="p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6 overflow-y-auto smooth-scroll">
             <DatabaseSelector
               selectedDbType={selectedDbType}
               onDbTypeChange={(type) => {
@@ -468,6 +478,8 @@ export default function Dashboard() {
                       setFormData(item);
                     }}
                     onDelete={handleDelete}
+                    parentRef={parentRef}
+                    virtualizer={rowVirtualizer}
                   />
                 </motion.div>
               )}
