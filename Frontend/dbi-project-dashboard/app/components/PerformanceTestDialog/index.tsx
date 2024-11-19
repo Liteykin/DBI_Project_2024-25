@@ -178,6 +178,96 @@ export function PerformanceTestDialog({
             }
           }
 
+          // Update test
+          if (activeOperation === "update" || activeOperation === "both") {
+            const startUpdate = performance.now();
+            try {
+              const testData = {
+                name: `Test_${Date.now()}_${i}`,
+                groesse: Math.random() * 100,
+                gewicht: Math.random() * 50,
+                anzahl: Math.floor(Math.random() * 10),
+              };
+
+              if (currentSection === "Tiere") {
+                await apiService.updateTier(testData, isMongoDb);
+              } else if (currentSection === "Filialen") {
+                await apiService.updateFiliale(
+                  {
+                    ...testData,
+                    adresse: `Test Address ${i}`,
+                  },
+                  isMongoDb
+                );
+              }
+
+              const endUpdate = performance.now();
+              setResults((prev) => [
+                ...prev,
+                {
+                  operation: "Update",
+                  database,
+                  responseTime: endUpdate - startUpdate,
+                  timestamp: Date.now(),
+                  success: true,
+                },
+              ]);
+            } catch (error) {
+              setResults((prev) => [
+                ...prev,
+                {
+                  operation: "Update",
+                  database,
+                  responseTime: performance.now() - startUpdate,
+                  timestamp: Date.now(),
+                  success: false,
+                },
+              ]);
+            }
+          }
+
+          // Delete test
+          if (activeOperation === "delete" || activeOperation === "both") {
+            const startDelete = performance.now();
+            try {
+              const testData = {
+                name: `Test_${Date.now()}_${i}`,
+                groesse: Math.random() * 100,
+                gewicht: Math.random() * 50,
+                anzahl: Math.floor(Math.random() * 10),
+              };
+
+              if (currentSection === "Tiere") {
+                await apiService.deleteTier(testData.name, isMongoDb);
+              } else if (currentSection === "Filialen") {
+                await apiService.deleteFiliale(testData.name, isMongoDb);
+              }
+
+              const endDelete = performance.now();
+              setResults((prev) => [
+                ...prev,
+                {
+                  operation: "Delete",
+                  database,
+                  responseTime: endDelete - startDelete,
+                  timestamp: Date.now(),
+                  success: true,
+                },
+              ]);
+            } catch (error) {
+              setResults((prev) => [
+                ...prev,
+                {
+                  operation: "Delete",
+                  database,
+                  responseTime: performance.now() - startDelete,
+                  timestamp: Date.now(),
+                  success: false,
+                },
+              ]);
+            }
+          }
+
           // Add delay between iterations
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
@@ -252,7 +342,9 @@ export function PerformanceTestDialog({
                 <SelectContent>
                   <SelectItem value="read">Read Operations</SelectItem>
                   <SelectItem value="write">Write Operations</SelectItem>
-                  <SelectItem value="both">Both Operations</SelectItem>
+                  <SelectItem value="update">Update Operations</SelectItem>
+                  <SelectItem value="delete">Delete Operations</SelectItem>
+                  <SelectItem value="both">All Operations</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -454,48 +546,60 @@ function getPerformanceAnalysis(data: AggregatedData[]): string {
   const fasterDb = mongoAvg < relationalAvg ? "MongoDB" : "Relational";
   const percentageDiff = (difference / Math.max(mongoAvg, relationalAvg)) * 100;
 
+  const readComparison =
+    mongoData.some((d) => d.operation === "Read") &&
+    relationalData.some((d) => d.operation === "Read")
+      ? `For read operations, ${
+          mongoData.find((d) => d.operation === "Read")!.avgResponseTime <
+          relationalData.find((d) => d.operation === "Read")!.avgResponseTime
+            ? "MongoDB"
+            : "Relational DB"
+        } showed better performance.`
+      : "";
+
+  const writeComparison =
+    mongoData.some((d) => d.operation === "Write") &&
+    relationalData.some((d) => d.operation === "Write")
+      ? `For write operations, ${
+          mongoData.find((d) => d.operation === "Write")!.avgResponseTime <
+          relationalData.find((d) => d.operation === "Write")!.avgResponseTime
+            ? "MongoDB"
+            : "Relational DB"
+        } showed better performance.`
+      : "";
+
+  const updateComparison =
+    mongoData.some((d) => d.operation === "Update") &&
+    relationalData.some((d) => d.operation === "Update")
+      ? `For update operations, ${
+          mongoData.find((d) => d.operation === "Update")!.avgResponseTime <
+          relationalData.find((d) => d.operation === "Update")!.avgResponseTime
+            ? "MongoDB"
+            : "Relational DB"
+        } showed better performance.`
+      : "";
+
+  const deleteComparison =
+    mongoData.some((d) => d.operation === "Delete") &&
+    relationalData.some((d) => d.operation === "Delete")
+      ? `For delete operations, ${
+          mongoData.find((d) => d.operation === "Delete")!.avgResponseTime <
+          relationalData.find((d) => d.operation === "Delete")!.avgResponseTime
+            ? "MongoDB"
+            : "Relational DB"
+        } showed better performance.`
+      : "";
+
   return `
-                            On average, ${fasterDb} performed ${percentageDiff.toFixed(
+    On average, ${fasterDb} performed ${percentageDiff.toFixed(
     1
   )}% faster in this test scenario.
-                            MongoDB average response time: ${mongoAvg.toFixed(
-                              2
-                            )}ms
-                            Relational DB average response time: ${relationalAvg.toFixed(
-                              2
-                            )}ms
+    MongoDB average response time: ${mongoAvg.toFixed(2)}ms
+    Relational DB average response time: ${relationalAvg.toFixed(2)}ms
 
-                            ${
-                              mongoData.some((d) => d.operation === "Read") &&
-                              relationalData.some((d) => d.operation === "Read")
-                                ? `For read operations, ${
-                                    mongoData.find(
-                                      (d) => d.operation === "Read"
-                                    )!.avgResponseTime <
-                                    relationalData.find(
-                                      (d) => d.operation === "Read"
-                                    )!.avgResponseTime
-                                      ? "MongoDB"
-                                      : "Relational DB"
-                                  } showed better performance.`
-                                : ""
-                            }
-                            ${
-                              mongoData.some((d) => d.operation === "Write") &&
-                              relationalData.some(
-                                (d) => d.operation === "Write"
-                              )
-                                ? `For write operations, ${
-                                    mongoData.find(
-                                      (d) => d.operation === "Write"
-                                    )!.avgResponseTime <
-                                    relationalData.find(
-                                      (d) => d.operation === "Write"
-                                    )!.avgResponseTime
-                                      ? "MongoDB"
-                                      : "Relational DB"
-                                  } showed better performance.`
-                                : ""
-                            }
-                          `;
+    ${readComparison}
+    ${writeComparison}
+    ${updateComparison}
+    ${deleteComparison}
+  `;
 }
