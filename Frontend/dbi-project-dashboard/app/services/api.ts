@@ -1,20 +1,6 @@
-// services/api.ts
-import {
-  CreateTierMutationInput,
-  CreateFilialeMutationInput,
-  CreateTierFilialeMutationInput,
-} from "./types";
-
-// Base interfaces for API responses
 interface ApiResponse<T> {
-  data: T;
-  status: number;
-  message?: string;
-}
-
-interface ErrorResponse {
-  message: string;
-  status: number;
+  result: T;
+  executionTime?: number;
 }
 
 // Domain interfaces
@@ -22,6 +8,7 @@ export interface Tier {
   name: string;
   groesse: number;
   gewicht: number;
+  anzahl?: number;
   tierFilialen?: TierFiliale[];
 }
 
@@ -30,6 +17,7 @@ export interface Filiale {
   name: string;
   adresse: string;
   tierFilialen?: TierFiliale[];
+  tiere?: MongoTier[]; // For MongoDB responses
 }
 
 export interface TierFiliale {
@@ -67,29 +55,15 @@ const API_BASE_URL = "http://localhost:5184";
 
 class ApiService {
   private getBaseUrl(isMongoDb: boolean): string {
-    return `${API_BASE_URL}${isMongoDb ? "/mongo" : ""}`;
+    return isMongoDb ? `${API_BASE_URL}/mongo` : API_BASE_URL;
   }
 
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     if (!response.ok) {
-      const error: ErrorResponse = {
-        status: response.status,
-        message: response.statusText || "An error occurred",
-      };
-      try {
-        const errorData = await response.json();
-        error.message = errorData.message || error.message;
-      } catch (e) {
-        // Keep original error if JSON parsing fails
-      }
-      throw error;
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-
     const data = await response.json();
-    return {
-      data,
-      status: response.status,
-    };
+    return data;
   }
 
   // Tiere (Animals) endpoints
@@ -114,16 +88,6 @@ class ApiService {
   ): Promise<ApiResponse<string[]>> {
     const response = await fetch(
       `${this.getBaseUrl(isMongoDb)}/tiere/names/filiale/${filialeId}`
-    );
-    return this.handleResponse<string[]>(response);
-  }
-
-  async getOrderedTierNamesByFiliale(
-    filialeId: number,
-    isMongoDb = false
-  ): Promise<ApiResponse<string[]>> {
-    const response = await fetch(
-      `${this.getBaseUrl(isMongoDb)}/tiere/names/ordered/filiale/${filialeId}`
     );
     return this.handleResponse<string[]>(response);
   }
@@ -198,18 +162,8 @@ class ApiService {
     return this.handleResponse<string[]>(response);
   }
 
-  async getOrderedFilialeNamesByTier(
-    tierName: string,
-    isMongoDb = false
-  ): Promise<ApiResponse<string[]>> {
-    const response = await fetch(
-      `${this.getBaseUrl(isMongoDb)}/filialen/names/ordered/tier/${tierName}`
-    );
-    return this.handleResponse<string[]>(response);
-  }
-
   async createFiliale(
-    filiale: Filiale,
+    filiale: Filiale | MongoFiliale,
     isMongoDb = false
   ): Promise<ApiResponse<void>> {
     const response = await fetch(`${this.getBaseUrl(isMongoDb)}/filiale`, {
@@ -221,7 +175,7 @@ class ApiService {
   }
 
   async updateFiliale(
-    filiale: Filiale,
+    filiale: Filiale | MongoFiliale,
     isMongoDb = false
   ): Promise<ApiResponse<void>> {
     const response = await fetch(`${this.getBaseUrl(isMongoDb)}/filiale`, {
@@ -245,39 +199,34 @@ class ApiService {
     return this.handleResponse<void>(response);
   }
 
-  // TierFiliale (Animal-Branch) endpoints
-  async getAllTierFilialen(
-    isMongoDb = false
-  ): Promise<ApiResponse<TierFiliale[]>> {
-    const response = await fetch(`${this.getBaseUrl(isMongoDb)}/tierfilialen`);
+  // TierFiliale (Animal-Branch) endpoints - Only for relational DB
+  async getAllTierFilialen(): Promise<ApiResponse<TierFiliale[]>> {
+    const response = await fetch(`${this.getBaseUrl(false)}/tierfilialen`);
     return this.handleResponse<TierFiliale[]>(response);
   }
 
   async getTierFilialeByTier(
-    tierName: string,
-    isMongoDb = false
+    tierName: string
   ): Promise<ApiResponse<TierFiliale[]>> {
     const response = await fetch(
-      `${this.getBaseUrl(isMongoDb)}/tierfilialen/tier/${tierName}`
+      `${this.getBaseUrl(false)}/tierfilialen/tier/${tierName}`
     );
     return this.handleResponse<TierFiliale[]>(response);
   }
 
   async getTierFilialeByFiliale(
-    filialeId: number,
-    isMongoDb = false
+    filialeId: number
   ): Promise<ApiResponse<TierFiliale[]>> {
     const response = await fetch(
-      `${this.getBaseUrl(isMongoDb)}/tierfilialen/filiale/${filialeId}`
+      `${this.getBaseUrl(false)}/tierfilialen/filiale/${filialeId}`
     );
     return this.handleResponse<TierFiliale[]>(response);
   }
 
   async createTierFiliale(
-    tierFiliale: TierFiliale,
-    isMongoDb = false
+    tierFiliale: TierFiliale
   ): Promise<ApiResponse<void>> {
-    const response = await fetch(`${this.getBaseUrl(isMongoDb)}/tierfiliale`, {
+    const response = await fetch(`${this.getBaseUrl(false)}/tierfiliale`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(tierFiliale),
@@ -286,10 +235,9 @@ class ApiService {
   }
 
   async updateTierFiliale(
-    tierFiliale: TierFiliale,
-    isMongoDb = false
+    tierFiliale: TierFiliale
   ): Promise<ApiResponse<void>> {
-    const response = await fetch(`${this.getBaseUrl(isMongoDb)}/tierfiliale`, {
+    const response = await fetch(`${this.getBaseUrl(false)}/tierfiliale`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(tierFiliale),
@@ -299,11 +247,10 @@ class ApiService {
 
   async deleteTierFiliale(
     filialeId: number,
-    tierName: string,
-    isMongoDb = false
+    tierName: string
   ): Promise<ApiResponse<void>> {
     const response = await fetch(
-      `${this.getBaseUrl(isMongoDb)}/tierfiliale/${filialeId}/${tierName}`,
+      `${this.getBaseUrl(false)}/tierfiliale/${filialeId}/${tierName}`,
       {
         method: "DELETE",
       }
@@ -313,11 +260,10 @@ class ApiService {
 
   // Seeding endpoints
   async startSeed(
-    request: SeedingRequest,
+    request: SeedingRequest | MongoSeedingRequest,
     isMongoDb = false
   ): Promise<ApiResponse<void>> {
-    const endpoint = isMongoDb ? "/mongo/startseed" : "/startseed";
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${this.getBaseUrl(isMongoDb)}/startseed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -325,7 +271,7 @@ class ApiService {
     return this.handleResponse<void>(response);
   }
 
-  // MongoDB specific endpoints for Tier
+  // MongoDB specific endpoints
   async createMongoTierInFiliale(
     filialeId: number,
     tier: MongoTier
@@ -367,22 +313,6 @@ class ApiService {
       }
     );
     return this.handleResponse<void>(response);
-  }
-
-  async getMongoTiereByFiliale(
-    filialeId: number
-  ): Promise<ApiResponse<MongoTier[]>> {
-    const response = await fetch(
-      `${this.getBaseUrl(true)}/tiere/filiale/${filialeId}`
-    );
-    return this.handleResponse<MongoTier[]>(response);
-  }
-
-  async getMongoTierNames(filialeId: number): Promise<ApiResponse<string[]>> {
-    const response = await fetch(
-      `${this.getBaseUrl(true)}/tiere/names/filiale/${filialeId}`
-    );
-    return this.handleResponse<string[]>(response);
   }
 }
 

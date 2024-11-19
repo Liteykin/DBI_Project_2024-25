@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import {
   Package,
@@ -15,7 +13,6 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  ActivitySquare,
   LineChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -117,14 +114,6 @@ export function Sidebar({
           icon: LineChart,
           action: () => setShowPerformanceDialog(true),
           description: "Compare database performance",
-          badge: "Analysis",
-        },
-        {
-          id: "metrics",
-          name: "Metrics",
-          icon: ActivitySquare,
-          description: "View performance metrics",
-          badge: "Real-time",
         },
       ],
     },
@@ -231,16 +220,18 @@ export function Sidebar({
                         >
                           <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
                           <div className="flex flex-col items-start flex-1 min-w-0">
-                            <span className="truncate">{item.name}</span>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="truncate">{item.name}</span>
+                              {item.badge && (
+                                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
                             <span className="text-xs opacity-70 truncate">
                               {item.description}
                             </span>
                           </div>
-                          {item.badge && (
-                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
-                              {item.badge}
-                            </span>
-                          )}
                         </motion.button>
                       ))}
                     </motion.div>
