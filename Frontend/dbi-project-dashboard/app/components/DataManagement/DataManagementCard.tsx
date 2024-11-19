@@ -29,6 +29,7 @@ interface DataManagementCardProps {
     type: string;
   };
   formData: any;
+  setFormData: (data: any) => void; // Add setFormData prop
   editingId: string | number | null;
   isLoading: boolean;
   data: any[];
@@ -44,6 +45,7 @@ interface DataManagementCardProps {
 export function DataManagementCard({
   selectedSection,
   formData,
+  setFormData, // Destructure setFormData
   editingId,
   isLoading,
   data,
@@ -167,6 +169,7 @@ export function DataManagementCard({
           <DataForm
             selectedSection={selectedSection}
             formData={formData}
+            setFormData={setFormData} // Pass setFormData prop
             editingId={editingId}
             isLoading={isLoading}
             onSubmit={onSubmit}

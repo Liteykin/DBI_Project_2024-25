@@ -11,6 +11,7 @@ interface DataFormProps {
     type: string;
   };
   formData: any;
+  setFormData: (data: any) => void; // Add setFormData prop
   editingId: string | number | null;
   isLoading: boolean;
   onSubmit: (e: React.FormEvent) => Promise<void>;
@@ -22,6 +23,7 @@ interface DataFormProps {
 export function DataForm({
   selectedSection,
   formData,
+  setFormData,
   editingId,
   isLoading,
   onSubmit,

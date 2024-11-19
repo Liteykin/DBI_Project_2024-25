@@ -273,7 +273,7 @@ export default function Dashboard() {
               filterValue,
               isMongoDb
             );
-            if (response.data) {
+            if (Array.isArray(response.data)) {
               // Transform the response to match the expected format
               filteredResults = response.data.map((filiale) => ({
                 ...filiale,
@@ -316,7 +316,7 @@ export default function Dashboard() {
                 filterValue,
                 false
               );
-              if (response.data) {
+              if (Array.isArray(response.data)) {
                 // Transform the response to match the expected format
                 filteredResults = response.data.map((tf) => ({
                   ...tf,
@@ -543,6 +543,7 @@ export default function Dashboard() {
                   <DataManagementCard
                     selectedSection={selectedSection}
                     formData={formData}
+                    setFormData={setFormData} // Pass setFormData prop
                     editingId={editingId}
                     isLoading={isLoading}
                     data={filteredData.length > 0 ? filteredData : data}
