@@ -233,39 +233,118 @@ export default function Dashboard() {
         return;
       }
 
-      const baseUrl =
-        selectedDbType === "MongoDB" ? `${API_BASE_URL}/mongo` : API_BASE_URL;
-      let endpoint = "";
+      const isMongoDb = selectedDbType === "MongoDB";
+      let filteredResults: any[] = [];
 
       switch (selectedSection.name) {
         case "Tiere":
-          endpoint = `/tier/${filterValue}`;
+          try {
+            // For both MongoDB and Relational
+            const response = await apiService.getTierByName(
+              filterValue,
+              isMongoDb
+            );
+            if (response.data) {
+              // Transform the response to match the expected format
+              const transformedData = {
+                ...response.data,
+                id: response.data.name,
+                displayName: response.data.name,
+                metrics: {
+                  size: response.data.groesse,
+                  weight: response.data.gewicht,
+                  count: isMongoDb ? response.data.anzahl : undefined,
+                },
+              };
+              filteredResults = [transformedData];
+            }
+          } catch (error) {
+            console.error("Error fetching filtered Tiere:", error);
+            // Fallback to local filtering
+            filteredResults = data.filter((tier) =>
+              tier.name.toLowerCase().includes(filterValue.toLowerCase())
+            );
+          }
           break;
+
         case "Filialen":
-          endpoint = `/filialen/tier/${filterValue}`;
+          try {
+            const response = await apiService.getFilialeByTier(
+              filterValue,
+              isMongoDb
+            );
+            if (response.data) {
+              // Transform the response to match the expected format
+              filteredResults = response.data.map((filiale) => ({
+                ...filiale,
+                id: filiale.id || filiale.name,
+                displayName: filiale.name,
+                location: filiale.adresse,
+                animals: isMongoDb
+                  ? (filiale.tiere || []).map((t: any) => ({
+                      name: t.name,
+                      count: t.anzahl,
+                      displayInfo: `${t.name} (${t.anzahl})`,
+                    }))
+                  : (filiale.tierFilialen || []).map((tf: any) => ({
+                      name: tf.tierName,
+                      count: tf.anzahl,
+                      displayInfo: `${tf.tierName} (${tf.anzahl})`,
+                    })),
+              }));
+            }
+
+            // If no results found by tier name, try filtering by filiale name
+            if (filteredResults.length === 0) {
+              filteredResults = data.filter((filiale) =>
+                filiale.name.toLowerCase().includes(filterValue.toLowerCase())
+              );
+            }
+          } catch (error) {
+            console.error("Error fetching filtered Filialen:", error);
+            // Fallback to local filtering
+            filteredResults = data.filter((filiale) =>
+              filiale.name.toLowerCase().includes(filterValue.toLowerCase())
+            );
+          }
           break;
+
         case "TierFilialen":
-          if (selectedDbType !== "MongoDB") {
-            endpoint = `/tierfilialen/tier/${filterValue}`;
+          if (!isMongoDb) {
+            try {
+              const response = await apiService.getTierFilialeByTier(
+                filterValue,
+                false
+              );
+              if (response.data) {
+                // Transform the response to match the expected format
+                filteredResults = response.data.map((tf) => ({
+                  ...tf,
+                  id: `${tf.filialeId}-${tf.tierName}`,
+                  displayName: `${tf.tierName} at Branch ${tf.filialeId}`,
+                  relationship: {
+                    branch: tf.filialeId,
+                    animal: tf.tierName,
+                    count: tf.anzahl,
+                  },
+                }));
+              }
+            } catch (error) {
+              console.error("Error fetching filtered TierFilialen:", error);
+              // Fallback to local filtering
+              filteredResults = data.filter((tf) =>
+                tf.tierName.toLowerCase().includes(filterValue.toLowerCase())
+              );
+            }
           }
           break;
       }
-
-      const response = await fetch(`${baseUrl}${endpoint}`);
-      if (!response.ok) throw new Error("Failed to fetch filtered data");
-
-      const timedResult: TimedResult<any> = await response.json();
-      const filteredResults = Array.isArray(timedResult.result)
-        ? timedResult.result
-        : timedResult.result
-        ? [timedResult.result]
-        : [];
 
       setFilteredData(filteredResults);
       toast.success(`Filter applied: Found ${filteredResults.length} results`);
     } catch (error) {
       console.error("Error applying filter:", error);
-      toast.error(error.message || "Failed to apply filter");
+      toast.error("Failed to apply filter");
       setFilteredData([]);
     } finally {
       setIsLoading(false);

@@ -368,6 +368,22 @@ class ApiService {
     );
     return this.handleResponse<void>(response);
   }
+
+  async getMongoTiereByFiliale(
+    filialeId: number
+  ): Promise<ApiResponse<MongoTier[]>> {
+    const response = await fetch(
+      `${this.getBaseUrl(true)}/tiere/filiale/${filialeId}`
+    );
+    return this.handleResponse<MongoTier[]>(response);
+  }
+
+  async getMongoTierNames(filialeId: number): Promise<ApiResponse<string[]>> {
+    const response = await fetch(
+      `${this.getBaseUrl(true)}/tiere/names/filiale/${filialeId}`
+    );
+    return this.handleResponse<string[]>(response);
+  }
 }
 
 export const apiService = new ApiService();
